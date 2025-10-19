@@ -1,0 +1,20 @@
+# Node.js
+node_modules/
+npm-debug.log
+.env
+.DS_Store
+*.log
+build/
+dist/
+tmp/
+coverage/
+.vscode/
+.idea/
+.nyc_output/
+*.tgz
+*.zip
+*.rar
+*.7z
+pids/
+logs/
+results/
