@@ -12,6 +12,7 @@
   "author": "Google LLC",
   "license": "Apache-2.0",
   "dependencies": {
+    "@vercel/node": "^5.5.2",
     "axios": "^1.7.2",
     "cors": "^2.8.5",
     "express": "^4.21.2",
