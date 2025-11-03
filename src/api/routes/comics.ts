@@ -47,11 +47,11 @@ router.get('/', async (req, res) => {
       }, params
     });
     const data = response.data;
-
     let comics: Comic[] = [];
     let total_pages = 1;
     let current_page = page;
 
+    // 🧩 ALL stories
     if (type === 'all') {
       comics = data.content.map((item: any) => ({
         id: item.slug,
@@ -67,11 +67,18 @@ router.get('/', async (req, res) => {
         updated_at: item.story.updatedAt,
         last_chapter: null,
         chapters: [],
-        genres: item.categories.map((cat: any) => ({ id: cat.id.toString(), name: cat.categoryName, description: '' }))
+        genres: item.categories.map((cat: any) => ({
+          id: cat.id.toString(),
+          name: cat.categoryName,
+          description: ''
+        }))
       }));
       total_pages = data.totalPages;
       current_page = data.number + 1;
-    } else if (type === 'random') {
+    }
+
+    // 🧩 Random stories
+    else if (type === 'random') {
       comics = data.map((item: any) => ({
         id: item.url,
         title: item.name,
@@ -80,7 +87,9 @@ router.get('/', async (req, res) => {
         total_views: item.totalView.toString(),
         followers: item.following?.toString() || '0',
         updated_at: item.lastChapterUpdatedAt,
-        last_chapter: item.lastChapterNumber ? { id: item.lastChapterNumber.toString(), name: `Chương ${item.lastChapterNumber}` } : null,
+        last_chapter: item.lastChapterNumber
+          ? { id: item.lastChapterNumber.toString(), name: `Chương ${item.lastChapterNumber}` }
+          : null,
         description: '',
         status: '',
         is_trending: false,
@@ -88,7 +97,10 @@ router.get('/', async (req, res) => {
         chapters: [],
         genres: []
       }));
-    } else if (type === 'recommend') {
+    }
+
+    // 🧩 Recommend comics
+    else if (type === 'recommend') {
       comics = data.map((item: any) => ({
         id: item.url,
         title: item.name,
@@ -105,7 +117,12 @@ router.get('/', async (req, res) => {
         chapters: [],
         genres: []
       }));
-    } else {
+      // ✅ Flutter expects List<ComicEntity>
+      return res.json(comics);
+    }
+
+    // 🧩 Weekly / Monthly / Top
+    else {
       comics = data.map((item: any) => ({
         id: item.url,
         title: item.name,
@@ -124,9 +141,11 @@ router.get('/', async (req, res) => {
       }));
     }
 
+    // ✅ Mặc định trả về object ComicList cho các loại khác
     const result: ComicList = { comics, current_page, total_pages };
     res.json(result);
   } catch (error: any) {
+    console.error('API Error:', error.message);
     res.status(500).json({ error: 'Failed to fetch comics', details: error.message });
   }
 });

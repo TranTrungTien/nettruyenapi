@@ -18,7 +18,8 @@
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "express-rate-limit": "^7.4.0",
-    "random-useragent": "^0.5.0"
+    "random-useragent": "^0.5.0",
+    "vercel": "^48.8.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
