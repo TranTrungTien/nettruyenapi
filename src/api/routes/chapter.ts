@@ -2,20 +2,20 @@ import { Router } from 'express';
 import axios from 'axios';
 import rateLimit from 'express-rate-limit';
 import { ContentChapter, DaoChapter } from '../types';
+import { BASE_URL, HEADERS } from '../../constants';
+import { generateToken } from '../../utils';
 
 const router = Router();
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 router.use(limiter);
 
-const BASE_URL = 'https://daotruyen.me/api/public';
-const HEADERS = { /* same as above */ };
 
 router.get('/:slug/chapter/:chapterNumber', async (req, res) => {
   try {
     const { slug, chapterNumber } = req.params;
     const url = `${BASE_URL}/v2/${slug}/${chapterNumber}`;
     const response = await axios.get(url, { 
-      headers: { ...HEADERS, 'Request-Token': '38c35cb62625475812102025112044' } // Update nếu cần
+      headers:  { ...HEADERS, 'Request-Token': generateToken() }
     });
     const data = response.data;
 

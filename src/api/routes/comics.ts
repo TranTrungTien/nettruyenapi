@@ -2,25 +2,12 @@ import { Router } from 'express';
 import axios from 'axios';
 import rateLimit from 'express-rate-limit';
 import { ComicList, Comic, DaoStory } from '../types';
+import { BASE_URL, HEADERS } from '../../constants';
+import { generateToken } from '../../utils';
 
 const router = Router();
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 router.use(limiter);
-
-const BASE_URL = 'https://daotruyen.me/api/public';
-const HEADERS = {
-  'Accept': '*/*',
-  'Accept-Language': 'vi,en-US;q=0.9,en;q=0.8',
-  'Connection': 'keep-alive',
-  'Referer': 'https://daotruyen.me/',
-  'Sec-Fetch-Dest': 'empty',
-  'Sec-Fetch-Mode': 'cors',
-  'Sec-Fetch-Site': 'same-origin',
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0',
-  'sec-ch-ua': '"Chromium";v="140", "Not=A?Brand";v="24", "Microsoft Edge";v="140"',
-  'sec-ch-ua-mobile': '?0',
-  'sec-ch-ua-platform': '"Windows"'
-};
 
 router.get('/', async (req, res) => {
   try {
@@ -54,7 +41,11 @@ router.get('/', async (req, res) => {
         params = { pageNo: page - 1, pageSize: 20 };
     }
 
-    const response = await axios.get(url, { headers: HEADERS, params });
+    const response = await axios.get(url, {
+      headers: {
+        ...HEADERS, 'Request-Token': generateToken()
+      }, params
+    });
     const data = response.data;
 
     let comics: Comic[] = [];

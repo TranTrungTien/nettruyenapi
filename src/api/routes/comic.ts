@@ -1,20 +1,19 @@
 import { Router } from 'express';
 import axios from 'axios';
 import rateLimit from 'express-rate-limit';
-import { Comic, DaoStory, DaoChapter, DaoCategory } from '../types';
+import { Comic, DaoChapter, DaoCategory } from '../types';
+import { BASE_URL, HEADERS } from '../../constants';
+import { generateToken } from '../../utils';
 
 const router = Router();
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 router.use(limiter);
 
-const BASE_URL = 'https://daotruyen.me/api/public';
-const HEADERS = { /* same as above */ };
-
 router.get('/:slug', async (req, res) => {
   try {
     const { slug } = req.params;
     const url = `${BASE_URL}/v2/${slug}`;
-    const response = await axios.get(url, { headers: HEADERS });
+    const response = await axios.get(url, { headers: { ...HEADERS, 'Request-Token': generateToken() } });
     const data = response.data;
 
     const comic: Comic = {
