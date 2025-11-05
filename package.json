@@ -12,13 +12,16 @@
   "author": "Google LLC",
   "license": "Apache-2.0",
   "dependencies": {
+    "@vercel/node": "^5.5.2",
     "axios": "^1.7.2",
     "cheerio": "^1.1.2",
+    "cors": "^2.8.5",
     "express": "^4.21.2",
     "express-rate-limit": "^7.4.0",
     "random-useragent": "^0.5.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^20.12.12",
     "@types/random-useragent": "^0.3.3",
