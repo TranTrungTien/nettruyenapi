@@ -1,7 +1,7 @@
 import express from 'express';
 import axios from 'axios';
 import userAgent from 'random-useragent';
-import { Comics, Status } from '../../utils';
+import { Comics, Status } from '../../utils/comic';
 
 const router = express.Router();
 const allStatus = ['all', 'completed', 'ongoing'];
@@ -46,7 +46,6 @@ searchApiPaths.forEach(({ path, callback }) => {
     const q = query.q ? query.q : '';
     if (!q) throw Error('Invalid query');
     const page = query.page ? Number(query.page) : 1;
-    
     res.send(await callback(q as string, page));
   });
 });
