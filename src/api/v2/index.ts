@@ -4,7 +4,6 @@ import userAgent from 'random-useragent';
 import { Comics, Status } from '../../utils/comic';
 
 const router = express.Router();
-const allStatus = ['all', 'completed', 'ongoing'];
 
 // Genres
 router.get('/genres', async (req, res) => {
@@ -16,15 +15,6 @@ router.get('/genres/:slug', async (req, res) => {
   const slug = params.slug;
   const page = query.page ? Number(query.page) : 1;
   res.send(await Comics.getComicsByGenre(slug, page));
-});
-
-// New Comics
-router.get('/new-comics', async (req, res) => {
-  const { query } = req;
-  const status = query.status ? query.status : 'all';
-  const page = query.page ? Number(query.page) : 1;
-  if (!allStatus.includes(status as string)) throw Error('Invalid status');
-  res.json(await Comics.getNewComics(status as Status, page));
 });
 
 // Recommend Comics
@@ -49,9 +39,7 @@ searchApiPaths.forEach(({ path, callback }) => {
 
 // Page params
 const pageParamsApiPaths = [
-  { path: '/boy-comics', callback: (...params: any) => Comics.getBoyComics(...params) },
   { path: '/completed-comics', callback: (...params: any) => Comics.getCompletedComics(...params) },
-  { path: '/girl-comics', callback: (...params: any) => Comics.getGirlComics(...params) },
   { path: '/recent-update-comics', callback: (...params: any) => Comics.getRecentUpdateComics(...params) },
   { path: '/trending-comics', callback: (...params: any) => Comics.getTrendingComics(...params) },
 ];
@@ -66,53 +54,19 @@ pageParamsApiPaths.forEach(({ path, callback }) => {
 
 // Comics
 const comicIdParamsApiPaths = [
-  { path: '/comics/:slug/chapters', callback: (params: string) => Comics.getChapters(params) },
-  { path: '/comics/:slug', callback: (params: string) => Comics.getComicDetail(params) },
-  { path: '/comics/authors/:slug', callback: (params: string) => Comics.getComicsByAuthor(params) },
+  { path: '/comics/:slug/chapters/:chapter_id', callback: (paramaters: { slug: string, id: string }) => Comics.getChapter(paramaters) },
+  { path: '/comics/:slug', callback: (paramaters: { slug: string, id?: string }) => Comics.getComicDetail(paramaters) },
+  // { path: '/comics/authors/:slug', callback: (params: string) => Comics.getComicsByAuthor(params) },
 ];
 
 comicIdParamsApiPaths.forEach(({ path, callback }) => {
   router.get(path, async (req, res) => {
     const { params } = req;
     const slug = params.slug;
+    const id = params.chapter_id;
+    const paramaters = { slug, id };    
     if (!slug) throw Error('Invalid');
-    res.json(await callback(slug));
-  });
-});
-
-router.get('/comics/:slug/chapters/:chapter_id', async (req, res) => {
-  const { params } = req;
-  const slug = params.slug;
-  const chapter_id = params.chapter_id ? Number(params.chapter_id) : null;
-  if (!slug || !chapter_id) throw Error('Invalid');
-  res.json(await Comics.getChapter(slug, chapter_id));
-});
-
-router.get('/comics/:slug/comments', async (req, res) => {
-  const { params, query } = req;
-  const slug = params.slug;
-  const page = query.page ? Number(query.page) : 1;
-  if (!slug) throw Error('Invalid Comic ID');
-  res.json(await Comics.getComments(slug, page));
-});
-
-// Top Comics
-const topComicsApiPaths = [
-  { path: '/', callback: (...params: any) => Comics.getTopAllComics(...params) },
-  { path: '/weekly', callback: (...params: any) => Comics.getTopWeeklyComics(...params) },
-  { path: '/monthly', callback: (...params: any) => Comics.getTopMonthlyComics(...params) },
-  { path: '/daily', callback: (...params: any) => Comics.getTopDailyComics(...params) },
-  { path: '/chapter', callback: (...params: any) => Comics.getTopChapterComics(...params) },
-  { path: '/follow', callback: (...params: any) => Comics.getTopFollowComics(...params) },
-  { path: '/comment', callback: (...params: any) => Comics.getTopCommentComics(...params) },
-];
-
-topComicsApiPaths.forEach(({ path, callback }) => {
-  router.get(`/top${path}`, async (req, res) => {
-    const { query } = req;
-    const status = query.status ? query.status : 'all';
-    const page = query.page ? Number(query.page) : 1;
-    res.json(await callback(status, page));
+    res.json(await callback(paramaters));
   });
 });
 

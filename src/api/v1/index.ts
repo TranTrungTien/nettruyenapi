@@ -44,7 +44,7 @@ router.get('/genres', async (req, res) => {
 
     res.json(genres);
   } catch (error: any) {
-    res.status(500).json({ error: 'Failed to fetch genres', details: error.message });
+    throw error;
   }
 });
 
@@ -68,8 +68,7 @@ router.get('/recommend-comics', async (req, res) => {
     };
     res.json(result);
   } catch (error: any) {
-    console.error('API Error:', error.message);
-    res.status(500).json({ error: 'Failed to fetch recommend comics', details: error.message });
+    throw error;
   }
 });
 
@@ -96,8 +95,7 @@ router.get('/trending-comics', async (req, res) => {
     };
     res.json(result);
   } catch (error: any) {
-    console.error('API Error:', error.message);
-    res.status(500).json({ error: 'Failed to fetch trending comics', details: error.message });
+    throw error;
   }
 });
 
@@ -140,8 +138,7 @@ router.get('/top/:type', async (req, res) => {
     };
     res.json(result);
   } catch (error: any) {
-    console.error('API Error:', error.message);
-    res.status(500).json({ error: `Failed to fetch top ${req.params.type} comics`, details: error.message });
+    throw error;
   }
 });
 
@@ -178,8 +175,7 @@ router.get('/recent-update-comics', async (req, res) => {
     };
     res.json(result);
   } catch (error: any) {
-    console.error('API Error:', error.message);
-    res.status(500).json({ error: 'Failed to fetch comics', details: error.message });
+    throw error;
   }
 });
 
@@ -216,7 +212,7 @@ router.get('/comics/:slug', async (req, res) => {
 
     res.json(comic);
   } catch (error: any) {
-    res.status(500).json({ error: 'Failed to fetch comic', details: error.message });
+    throw error;
   }
 });
 
@@ -242,7 +238,7 @@ router.get('/comics/:slug/chapters/:chapter_id', async (req, res) => {
 
     res.json(result);
   } catch (error: any) {
-    res.status(500).json({ error: 'Failed to fetch chapter', details: error.message });
+    throw error;
   }
 });
 

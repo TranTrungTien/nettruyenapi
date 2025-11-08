@@ -14,7 +14,7 @@
   "dependencies": {
     "@vercel/node": "^5.5.2",
     "axios": "^1.13.2",
-    "axios-cookiejar-support": "^6.0.4",
+    "axios-cookiejar-support": "^4.0.7",
     "axios-retry": "^4.5.0",
     "cheerio": "^1.1.2",
     "cors": "^2.8.5",
