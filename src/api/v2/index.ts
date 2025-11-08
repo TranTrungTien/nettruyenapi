@@ -29,15 +29,12 @@ router.get('/new-comics', async (req, res) => {
 
 // Recommend Comics
 router.get('/recommend-comics', async (req, res) => {
-  const { query } = req;
-  const type = query.type ? query.type : 'hot';
-  res.json(await Comics.getRecommendComics(type as 'hot' | 'boy' | 'girl'));
+  res.json(await Comics.getRecommendComics());
 });
 
 // Search
 const searchApiPaths = [
   { path: '/search', callback: (q: string, page: number) => Comics.searchComics(q, page) },
-  { path: '/search-suggest', callback: (q: string) => Comics.getSearchSuggest(q) },
 ];
 
 searchApiPaths.forEach(({ path, callback }) => {

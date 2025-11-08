@@ -146,7 +146,7 @@ router.get('/top/:type', async (req, res) => {
 });
 
 
-router.get('/comics', async (req, res) => {
+router.get('/recent-update-comics', async (req, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const url = `${BASE_URL}/stories`;
@@ -161,12 +161,12 @@ router.get('/comics', async (req, res) => {
       description: item.story.description,
       authors: item.story.authorName || item.teamName,
       status: item.story.state === 1 ? 'Ongoing' : 'Completed',
-      total_views: item.storyTotalView.toString(),
+      total_views: item.storyTotalView?.toString(),
       followers: '0',
       short_description: item.descriptions?.join('\n') || '',
       updated_at: item.story.updatedAt,
-      genres: item.categories.map((cat: any) => ({
-        id: cat.id.toString(),
+      genres: item.categories?.map((cat: any) => ({
+        id: cat.id?.toString(),
         name: cat.categoryName,
       }))
     }));
