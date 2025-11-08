@@ -1,7 +1,7 @@
 import express, { Express } from 'express';
 import cors from 'cors';
-import apiRouter from './api/v1/index';
-import v2Router from './api/v2/';
+import apiRouter from './api/v1';
+import v2Router from './api/v2';
 
 const app: Express = express();
 
@@ -13,7 +13,7 @@ app.use(cors({
 
 app.use(express.json());
 
-app.use('/api', apiRouter);
+app.use('/api/v1', apiRouter);
 app.use('/api/v2', v2Router);
 
 app.get('/', (req, res) => {
