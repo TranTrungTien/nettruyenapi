@@ -104,15 +104,7 @@ class ComicsApi {
     return text?.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
   }
 
-  private async getComics(path: string, page: number = 1, statusKey: Status = "all"): Promise<any> {
-    const status: any = {
-      all: -1,
-      ongoing: 1,
-      completed: 2,
-    };
-
-    if (!status.hasOwnProperty(statusKey)) throw Error("Invalid status");
-
+  private async getComics(path: string, page: number = 1): Promise<any> {
     try {
       const fullPath = `${path}${page > 1 ? `trang-${page}/` : ''}`;
       const $ = await this.createRequest(fullPath);
@@ -147,13 +139,13 @@ class ComicsApi {
         const thumbnail = thumbDiv.attr("data-image") || thumbDiv.attr("data-desk-image") || thumbDiv.find("img").attr("src") || "";
 
         // Authors: remove icon text if present
-        let authors = "";
+        let authors = [];
         const authorEl = $item.find(".author").first();
         if (authorEl && authorEl.length) {
           // remove any child icons/text that aren't author name
           const cloned = authorEl.clone();
           cloned.find(".glyphicon").remove();
-          authors = this.trim(cloned.text()) || "";
+          authors.push(this.trim(cloned.text()) || "");
         }
 
         // Last chapter text and id
@@ -252,7 +244,7 @@ class ComicsApi {
 
   public async getCompletedComics(page: number = 1): Promise<any> {
     try {
-      return await this.getComics("truyen-da-hoan-thanh/", page, "completed");
+      return await this.getComics("/danh-sach/truyen-full/", page);
     } catch (err) {
       throw err;
     }
@@ -285,7 +277,7 @@ class ComicsApi {
 
   public async getComicDetail(paramaters: { slug: string, id?: string }): Promise<any> {
     const { slug } = paramaters;
-    
+
     try {
       const [$, chapters] = await Promise.all([
         this.createRequest(`${slug}/`),
@@ -301,7 +293,7 @@ class ComicsApi {
         const m = pagHref.match(/trang-(\d+)/) || pagHref.match(/page[=\/](\d+)/);
         total_pages = m ? Number(m[1]) : 1;
       }
-      
+
       const title = $(".col-truyen-main .col-info-desc .title").text().trim();
       const thumbnail = $(".col-truyen-main .books img").attr("src") || "";
       const description = $(".col-truyen-main .desc-text").text().trim();
@@ -349,7 +341,11 @@ class ComicsApi {
       ]);
       const chapter_name = $("#chapter-big-container .chapter-title").text().trim();
       const comic_name = $("#chapter-big-container .truyen-title").text().trim();
-      const content = $('#chapter-c').text().trim();
+      const content = $('#chapter-c').html()?.replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/p>/gi, '\n')
+        .replace(/<[^>]+>/g, '')
+        .trim();
+
       return { chapter_name, comic_name, content, chapters };
     } catch (err) {
       throw err;
