@@ -23,18 +23,12 @@ router.get('/recommend-comics', async (req, res) => {
 });
 
 // Search
-const searchApiPaths = [
-  { path: '/search', callback: (q: string, page: number) => Comics.searchComics(q, page) },
-];
-
-searchApiPaths.forEach(({ path, callback }) => {
-  router.get(path, async (req, res) => {
-    const { query } = req;
-    const q = query.q ? query.q : '';
-    if (!q) throw Error('Invalid query');
-    const page = query.page ? Number(query.page) : 1;
-    res.send(await callback(q as string, page));
-  });
+router.get('/search', async (req, res) => {
+  const { query } = req;
+  const q = query.q ? query.q : '';
+  if (!q) throw Error('Invalid query');
+  const page = query.page ? Number(query.page) : 1;
+  res.json(await Comics.searchComics(q as string, page));
 });
 
 // Page params
@@ -56,7 +50,6 @@ pageParamsApiPaths.forEach(({ path, callback }) => {
 const comicIdParamsApiPaths = [
   { path: '/comics/:slug/chapters/:chapter_id', callback: (paramaters: { slug: string, id: string }) => Comics.getChapter(paramaters) },
   { path: '/comics/:slug', callback: (paramaters: { slug: string, id?: string }) => Comics.getComicDetail(paramaters) },
-  // { path: '/comics/authors/:slug', callback: (params: string) => Comics.getComicsByAuthor(params) },
 ];
 
 comicIdParamsApiPaths.forEach(({ path, callback }) => {

@@ -10,12 +10,13 @@ export interface Genre {
     description?: string;
 }
 
+
 export interface Comic {
     id: string;
     title: string;
     thumbnail?: string;
     description?: string;
-    authors?: string;
+    authors?: string[];
     status?: string;
     other_names?: string[];
     total_views?: string;

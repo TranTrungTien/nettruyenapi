@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import axios from 'axios';
 import rateLimit from 'express-rate-limit';
-import { Comic, ComicList, ContentChapter, Chapter, Genre, DaoStory, DaoChapter, DaoCategory, DaoTeam } from '../types';
+import { Comic, ComicList, ContentChapter, Genre, DaoChapter, DaoCategory, DaoTeam } from '../types';
 
 const router = Router();
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
@@ -22,6 +22,21 @@ const HEADERS = {
   'sec-ch-ua-platform': '"Windows"'
 };
 
+router.get('/teams', async (req, res) => {
+  try {
+    let url = `${BASE_URL}/teams?size=999999`;
+    let response = await axios.get(url, { headers: HEADERS });
+    let genres: Genre[] = response.data.map((item: DaoTeam) => ({
+      id: item.id.toString(),
+      name: item.teamName,
+    }));
+
+    res.json(genres);
+  } catch (error: any) {
+    throw error;
+  }
+});
+
 router.get('/genres', async (req, res) => {
   try {
     let url = `${BASE_URL}/categories`;
@@ -31,16 +46,6 @@ router.get('/genres', async (req, res) => {
       name: item.categoryName,
       description: ''
     }));
-
-    if (genres.length === 0 || genres[0].name === '') {
-      url = `${BASE_URL}/teams?size=999999`;
-      response = await axios.get(url, { headers: HEADERS });
-      genres = response.data.map((item: DaoTeam) => ({
-        id: item.id.toString(),
-        name: item.teamName,
-        description: ''
-      }));
-    }
 
     res.json(genres);
   } catch (error: any) {
@@ -83,7 +88,7 @@ router.get('/trending-comics', async (req, res) => {
       id: item.url,
       title: item.name,
       thumbnail: `https://daotruyen.me${item.image}`,
-      authors: item.teamName,
+      authors: [item.teamName],
       total_views: item.totalView.toString(),
       is_trending: true,
     }));
@@ -126,11 +131,11 @@ router.get('/top/:type', async (req, res) => {
       id: item.url,
       title: item.name,
       thumbnail: `https://daotruyen.me${item.image}`,
-      authors: item.teamName,
+      authors: [item.teamName],
       total_views: item.totalView.toString(),
       is_trending: true,
     }));
-    
+
     const result: ComicList = {
       comics,
       total_pages: 1, // This API does not support pagination
@@ -156,7 +161,7 @@ router.get('/recent-update-comics', async (req, res) => {
       title: item.story.name,
       thumbnail: `https://daotruyen.me${item.imageSrc}`,
       description: item.story.description,
-      authors: item.story.authorName || item.teamName,
+      authors: [item.story.authorName || item.teamName],
       status: item.story.state === 1 ? 'Ongoing' : 'Completed',
       total_views: item.storyTotalView?.toString(),
       followers: '0',
@@ -179,6 +184,39 @@ router.get('/recent-update-comics', async (req, res) => {
   }
 });
 
+router.get('/genres/:slug', async (req, res) => {
+  try {
+    const { params, query } = req;
+    const slug = params.slug;
+    const page = query.page ? Number(query.page) : 1;
+    const url = `${BASE_URL}/v2/stories-by-category/${slug}?pageNo=${page}&pageSize=20`;
+    const response = await axios.get(url, { headers: HEADERS });
+    const data = response.data;
+    
+    const comics: Comic[] = data.content.map((item: any) => ({
+      id: item.url,
+      title: item.name,
+      thumbnail: `https://daotruyen.me${item.imageSrc}`,
+      description: '',
+      authors: [item.authorName || item.teamName],
+      status: '',
+      total_views: item.totalView?.toString(),
+      followers: '0',
+      short_description: '',
+      updated_at: '',
+      genres: []
+    }));
+
+    const result: ComicList = {
+      comics,
+      total_pages: -1,      // Use totalPages from response
+      current_page: page,       // Use number from response
+    };
+    res.json(result);
+  } catch (error: any) {
+    throw error;
+  }
+});
 
 router.get('/comics/:slug', async (req, res) => {
   try {
@@ -192,16 +230,16 @@ router.get('/comics/:slug', async (req, res) => {
       title: data.story.name,
       thumbnail: `https://daotruyen.me${data.story.image}`,
       description: data.story.description,
-      authors: data.story.authorName || data.translate.teamName,
+      authors: [data.story.authorName || data.translate.teamName],
       status: data.story.state === 1 ? 'Ongoing' : 'Completed',
       total_views: data.story.totalView.toString(),
       followers: '0',
       short_description: data.story.description.split('\n').slice(0, 3).join('\n'),
       updated_at: data.story.updatedAt,
-      last_chapter: data.chapters[0] ? { id: data.chapters[0].chapterNumber.toString(), name: data.chapters[0].title } : null,
+      last_chapter: data.chapters[data.chapters?.length - 1],
       chapters: data.chapters.map((chap: DaoChapter) => ({
         id: chap.chapterNumber.toString(),
-        name: chap.title
+        name: chap.title,
       })),
       genres: data.categories.map((cat: DaoCategory) => ({
         id: cat.id.toString(),
@@ -252,6 +290,33 @@ router.get('/images', async (req: any, res: any) => {
     response.data.pipe(res);
   } catch (err) {
     throw err;
+  }
+});
+
+router.get('/search', async (req, res) => {
+  try {
+    const { q, page } = req.query;
+    const url = `${BASE_URL}/search?value=${encodeURIComponent(q as string)}&pageNo=${page}&pageSize=20`;
+    
+    const response = await axios.get(url, { headers: HEADERS });
+    const data = response.data?.stories || [];
+    const comics: Comic[] = data.map((comic: any) => ({
+      id: comic.url,
+      title: comic.name,
+      authors: [comic.authorName || comic.teamName],
+      chapters: [],
+      genres: [],
+      total_views: comic.totalView,
+      thumbnail: `https://daotruyen.me${comic.image}`,
+    }));
+    const result: ComicList = {
+      comics,
+      total_pages: -1,
+      current_page: page as unknown as number,
+    };
+    res.json(result);
+  } catch (error: any) {
+    throw error;
   }
 });
 

@@ -111,7 +111,7 @@ class ComicsApi {
 
       // Try several pagination selectors; nếu không tìm thấy => 1
       let total_pages = 1;
-      const pagHref = $(".pagination li:last-child a").attr("href")
+      const pagHref = $(".col-truyen-main .pagination li:eq(-2) a").attr("href")
         || $(".paging a:last-child").attr("href")
         || $("ul.pagination li:last-child a").attr("href");
       if (pagHref) {
@@ -284,16 +284,13 @@ class ComicsApi {
         this.getChapters(slug),
       ]);
 
-      // Try several pagination selectors; nếu không tìm thấy => 1
-      let total_pages = 1;
-      const pagHref = $(".col-truyen-main .pagination li:last-child a").attr("href")
-        || $(".paging a:last-child").attr("href")
-        || $("ul.pagination li:last-child a").attr("href");
+      let total_chapter_pages = 1;
+      const pagHref = $(".col-truyen-main #list-chapter .pagination li:eq(-2) a").attr("href");
       if (pagHref) {
         const m = pagHref.match(/trang-(\d+)/) || pagHref.match(/page[=\/](\d+)/);
-        total_pages = m ? Number(m[1]) : 1;
+        total_chapter_pages = m ? Number(m[1]) : 1;
       }
-
+      
       const title = $(".col-truyen-main .col-info-desc .title").text().trim();
       const thumbnail = $(".col-truyen-main .books img").attr("src") || "";
       const description = $(".col-truyen-main .desc-text").text().trim();
@@ -325,7 +322,7 @@ class ComicsApi {
         id: slug,
         is_adult,
         other_names,
-        total_pages,
+        total_chapter_pages,
       };
     } catch (err) {
       throw err;
