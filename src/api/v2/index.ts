@@ -48,7 +48,8 @@ pageParamsApiPaths.forEach(({ path, callback }) => {
 
 // Comics
 const comicIdParamsApiPaths = [
-  { path: '/comics/:slug/chapters/:chapter_id', callback: (paramaters: { slug: string, id: string }) => Comics.getChapter(paramaters) },
+  { path: '/comics/:slug/chapters/:chapter_id', callback: (paramaters: { slug: string, id: string }) => Comics.getChapterContent(paramaters) },
+  { path: '/comics/:slug/:chapter_page', callback: (paramaters: { slug: string, id?: string }) => Comics.getChapters(paramaters) },
   { path: '/comics/:slug', callback: (paramaters: { slug: string, id?: string }) => Comics.getComicDetail(paramaters) },
 ];
 
@@ -57,9 +58,11 @@ comicIdParamsApiPaths.forEach(({ path, callback }) => {
     const { params } = req;
     const slug = params.slug;
     const id = params.chapter_id;
-    const paramaters = { slug, id };    
+    const chapterPage = params.chapter_page;
+    const paramaters = { slug, id, chapterPage };    
     if (!slug) throw Error('Invalid');
     res.json(await callback(paramaters));
+    return;
   });
 });
 

@@ -1,7 +1,7 @@
 
 import axios from "axios";
 import axiosRetry from "axios-retry";
-import { load } from "cheerio";
+import { Cheerio, load } from "cheerio";
 import { CookieJar } from "tough-cookie";
 import { wrapper as axiosCookieJarSupport } from "axios-cookiejar-support";
 import randomUserAgent from "random-useragent";
@@ -195,10 +195,11 @@ class ComicsApi {
     }
   }
 
-  public async getChapters(comicId: string): Promise<any> {
+  public async getChapters(paramaters: { slug: string, chapterPage?: number }): Promise<any> {
+    const { slug, chapterPage } = paramaters;
     try {
-      const $ = await this.createRequest(comicId);
-      const chapters = Array.from($(".list-chapter li a")).map((chap) => {
+      const $ = await this.createRequest(`${slug}/trang-${chapterPage || 1}`);
+      const chapters = Array.from($("#list-chapter .list-chapter li a")).map((chap) => {
         const href = $(chap).attr("href");
         const id = Number(href?.split("-")?.at(-1)?.replace("/", "")) || 0;
         const name = $(chap).attr("title") || $(chap).text();
@@ -275,27 +276,28 @@ class ComicsApi {
     }
   }
 
-  public async getComicDetail(paramaters: { slug: string, id?: string }): Promise<any> {
+  public async getComicDetail(paramaters: { slug: string, id?: string, chapterPage?: number }): Promise<any> {
     const { slug } = paramaters;
-
     try {
       const [$, chapters] = await Promise.all([
         this.createRequest(`${slug}/`),
-        this.getChapters(slug),
+        this.getChapters(paramaters),
       ]);
-
+      
       let total_chapter_pages = 1;
-      const pagHref = $(".col-truyen-main #list-chapter .pagination li:eq(-2) a").attr("href");
+      const sencondLastestPage = $(".col-truyen-main #list-chapter .pagination li:eq(-2) a").attr("href");
+      const lastestPage = $(".col-truyen-main #list-chapter .pagination li:eq(-1) a").attr("href");
+      const pagHref = lastestPage?.includes('javascript:void(0)') ? sencondLastestPage : lastestPage;
       if (pagHref) {
         const m = pagHref.match(/trang-(\d+)/) || pagHref.match(/page[=\/](\d+)/);
         total_chapter_pages = m ? Number(m[1]) : 1;
       }
       
-      const title = $(".col-truyen-main .col-info-desc .title").text().trim();
+      const title = this.convertText($(".col-truyen-main .col-info-desc .title"));;
       const thumbnail = $(".col-truyen-main .books img").attr("src") || "";
-      const description = $(".col-truyen-main .desc-text").text().trim();
+      const description = this.convertText($(".col-truyen-main .desc-text"));
       const authors = Array.from($(".col-truyen-main .info div").filter((_: any, el: any) => $(el).text().includes("Tác giả"))).map((el) => $(el).find("a").text()).filter(Boolean) || "Updating";
-      const status = $(".col-truyen-main .info div").filter((_: any, el: any) => $(el).text().includes("Tình trạng")).find("span").text() === "Hoàn thành" ? "Finished" : "Ongoing";
+      const status = $(".col-truyen-main .text-success")?.text()?.trim();
       const genres = Array.from($(".col-truyen-main .info div").filter((_: any, el: any) => $(el).text().includes("Thể loại")).find("a")).map((item) => {
         const id = this.getGenreId($(item).attr("href") ?? '');
         const name = $(item).text();
@@ -329,19 +331,25 @@ class ComicsApi {
     }
   }
 
-  public async getChapter(paramaters: { slug: string, id: string }): Promise<any> {
+  private convertText(element: Cheerio<any>): string {
+    if(!element) return '';
+
+    return element.html()?.replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .trim() || ''
+  }
+
+  public async getChapterContent(paramaters: { slug: string, id: string, chapterPage?: number }): Promise<any> {
     const { slug, id } = paramaters;
     try {
       const [$, chapters] = await Promise.all([
         this.createRequest(`${slug}/chuong-${id}/`),
-        this.getChapters(slug),
+        this.getChapters(paramaters),
       ]);
       const chapter_name = $("#chapter-big-container .chapter-title").text().trim();
       const comic_name = $("#chapter-big-container .truyen-title").text().trim();
-      const content = $('#chapter-c').html()?.replace(/<br\s*\/?>/gi, '\n')
-        .replace(/<\/p>/gi, '\n')
-        .replace(/<[^>]+>/g, '')
-        .trim();
+      const content = this.convertText($('#chapter-c'));
 
       return { chapter_name, comic_name, content, chapters };
     } catch (err) {
