@@ -104,6 +104,19 @@ router.get('/trending-comics', async (req, res) => {
   }
 });
 
+router.get('/completed-comics', async (req, res) => {
+  try {
+    const result: ComicList = {
+      comics: [],
+      total_pages: 1, 
+      current_page: 1,
+    };
+    res.json(result);
+  } catch (error: any) {
+    throw error;
+  }
+})
+
 router.get('/top/:type', async (req, res) => {
   try {
     const { type } = req.params;
@@ -146,7 +159,6 @@ router.get('/top/:type', async (req, res) => {
     throw error;
   }
 });
-
 
 router.get('/recent-update-comics', async (req, res) => {
   try {
