@@ -201,7 +201,7 @@ class ComicsApi {
       const $ = await this.createRequest(`${slug}/trang-${chapterPage || 1}`);
       const chapters = Array.from($("#list-chapter .list-chapter li a")).map((chap) => {
         const href = $(chap).attr("href");
-        const id = Number(href?.split("-")?.at(-1)?.replace("/", "")) || 0;
+        const id = href?.split("-")?.at(-1)?.replace("/", "") || '0';
         const name = $(chap).attr("title") || $(chap).text();
         return { id, name };
       });
@@ -264,7 +264,7 @@ class ComicsApi {
     try {
       return await this.getComics("danh-sach/truyen-hot/trang-2", page);
     } catch (err) {
-      throw err;
+      // throw err;
     }
   }
 
