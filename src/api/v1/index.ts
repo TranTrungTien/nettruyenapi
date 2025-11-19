@@ -202,6 +202,7 @@ router.get('/genres/:slug', async (req, res) => {
     const slug = params.slug;
     const page = query.page ? Number(query.page) : 1;
     const url = `${BASE_URL}/v2/stories-by-category/${slug}?pageNo=${page}&pageSize=20`;
+    
     const response = await axios.get(url, { headers: HEADERS });
     const data = response.data;
     
@@ -236,22 +237,23 @@ router.get('/comics/:slug', async (req, res) => {
     const url = `${BASE_URL}/v2/${slug}`;
     const response = await axios.get(url, { headers: HEADERS });
     const data = response.data;
-
+    const lastChapter = data.chapters[data.chapters?.length - 1];
+    lastChapter.title = lastChapter.title || '';
     const comic: Comic = {
       id: data.story.url,
       title: data.story.name,
       thumbnail: `https://daotruyen.me${data.story.image}`,
       description: data.story.description,
       authors: [data.story.authorName || data.translate.teamName],
-      status: data.story.state === 1 ? 'Ongoing' : 'Completed',
+      status: data.story.state === 1 ? 'Trọn bộ' : 'Full',
       total_views: data.story.totalView.toString(),
       followers: '0',
       short_description: data.story.description.split('\n').slice(0, 3).join('\n'),
       updated_at: data.story.updatedAt,
-      last_chapter: data.chapters[data.chapters?.length - 1],
+      last_chapter: lastChapter,
       chapters: data.chapters.map((chap: DaoChapter) => ({
         id: chap.chapterNumber.toString(),
-        name: chap.title,
+        name: chap.title || '',
       })),
       genres: data.categories.map((cat: DaoCategory) => ({
         id: cat.id.toString(),
@@ -280,7 +282,7 @@ router.get('/comics/:slug/chapters/:chapter_id', async (req, res) => {
       comic_name: data.story.name,
       chapters: data.chapters.map((chap: DaoChapter) => ({
         id: chap.chapterNumber.toString(),
-        name: chap.title
+        name: chap.title || ''
       })),
       images: [],
       content: data.chapter.paragraph
