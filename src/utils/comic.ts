@@ -161,7 +161,7 @@ class ComicsApi {
 
         // Other optional fields — try to find, otherwise empty/defaults
         const updated_at = ""; // list page không có thời gian rõ ràng -> empty
-        const total_views = ""; // không có
+        const total_views = "0"; // không có
         const is_trending = $item.find(".label-title.label-hot").length > 0;
         const short_description = "";
         const lastest_chapters = last_chapter ? [{ name: last_chapter, id: last_chapter_id, updated_at }] : [];
@@ -295,7 +295,7 @@ class ComicsApi {
       const title = this.convertText($(".col-truyen-main .col-info-desc .title"));;
       const thumbnail = $(".col-truyen-main .books img").attr("src") || "";
       const description = this.convertText($(".col-truyen-main .desc-text"));
-      const authors = Array.from($(".col-truyen-main .info div").filter((_: any, el: any) => $(el).text().includes("Tác giả"))).map((el) => $(el).find("a").text()).filter(Boolean) || "Updating";
+      const authors = Array.from($(".col-truyen-main .info div").filter((_: any, el: any) => $(el).text().includes("Tác giả"))).map((el) => $(el).find("a").text()).filter(Boolean) || "Không rõ";
       const status = $(".col-truyen-main .text-success")?.text()?.trim();
       const genres = Array.from($(".col-truyen-main .info div").filter((_: any, el: any) => $(el).text().includes("Thể loại")).find("a")).map((item) => {
         const id = this.getGenreId($(item).attr("href") ?? '');
@@ -307,7 +307,7 @@ class ComicsApi {
       const total_views = this.formatTotal($(".col-truyen-main .info div").filter((i: any, el: any) => $(el).text().includes("Lượt xem")).find("span").text());
       const rating_count = Number($(".col-truyen-main .rate-holder").attr("data-score")) || 0; // Fix tạm
       const average = Number($(".col-truyen-main .small span:last-child").text()) || 0;
-      const followers = "Updating"; // No followers
+      const followers = ""; // No followers
       return {
         title,
         thumbnail,
