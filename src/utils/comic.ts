@@ -282,7 +282,7 @@ class ComicsApi {
         this.createRequest(`${slug}/`),
         this.getChapters(paramaters),
       ]);
-      
+
       let total_chapter_pages = 1;
       const sencondLastestPage = $(".col-truyen-main #list-chapter .pagination li:eq(-2) a").attr("href");
       const lastestPage = $(".col-truyen-main #list-chapter .pagination li:eq(-1) a").attr("href");
@@ -291,7 +291,7 @@ class ComicsApi {
         const m = pagHref.match(/trang-(\d+)/) || pagHref.match(/page[=\/](\d+)/);
         total_chapter_pages = m ? Number(m[1]) : 1;
       }
-      
+
       const title = this.convertText($(".col-truyen-main .col-info-desc .title"));;
       const thumbnail = $(".col-truyen-main .books img").attr("src") || "";
       const description = this.convertText($(".col-truyen-main .desc-text"));
@@ -333,42 +333,32 @@ class ComicsApi {
   private convertText(element: Cheerio<any>): string {
     if (!element) return '';
 
-    // Lấy nội dung HTML
     let htmlContent = element.html();
-    
     if (!htmlContent) return '';
 
-    // BƯỚC 1: Thay thế các thẻ block thành xuống dòng để giữ cấu trúc đoạn văn
+    // --- BƯỚC 1: Chuyển các thẻ block thành newline ---
     htmlContent = htmlContent
-        .replace(/<br\s*\/?>/gi, '\n') // Thẻ <br>
-        .replace(/<\/p>/gi, '\n')      // Thẻ đóng </p>
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<\/div>/gi, '\n')
+      .replace(/<\/li>/gi, '\n');
 
-    // BƯỚC 2: Xử lý các thực thể HTML (Entity Decoding)
-    // Thay thế các thực thể ký tự bằng ký tự tương đương của chúng.
+    // --- BƯỚC 2: Decode thực thể HTML ---
     htmlContent = htmlContent
-        // Thay &nbsp; bằng khoảng trắng đơn
-        .replace(/&nbsp;/gi, ' ')
-        // Thay &quot; bằng "
-        .replace(/&quot;/gi, '"')
-        // Thay &apos; bằng '
-        .replace(/&apos;/gi, "'")
-        // Thay &lt; bằng <
-        .replace(/&lt;/gi, '<')
-        // Thay &gt; bằng >
-        .replace(/&gt;/gi, '>')
-        // Thay &amp; bằng & (Cần chạy cuối cùng, hoặc xử lý sau khi đã xử lý các thực thể khác)
-        // Lưu ý: Nếu trang web dùng thực thể số (vd: &#39;), cần dùng thư viện
-        .replace(/&amp;/gi, '&'); 
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&quot;/gi, '"')
+      .replace(/&apos;/gi, "'")
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&amp;/gi, '&');
 
-    // BƯỚC 3: Loại bỏ tất cả các tag HTML còn lại (ví dụ: <span>, <div>, <b>)
+    // --- BƯỚC 3: Loại bỏ tag HTML còn lại ---
     htmlContent = htmlContent.replace(/<[^>]+>/g, '');
     
-    // BƯỚC 4: Loại bỏ khoảng trắng thừa (có thể là kết quả của việc thay thế &nbsp;)
-    // và khoảng trắng ở đầu/cuối chuỗi
-    return htmlContent
-        .replace(/\s+/g, ' ') // Thay thế nhiều khoảng trắng liên tiếp bằng 1 khoảng trắng
-        .trim();
-}
+    // --- BƯỚC 5: Trim đầu/cuối toàn bộ text ---
+    return htmlContent.trim();
+  }
+
 
   public async getChapterContent(paramaters: { slug: string, id: string, chapterPage?: number }): Promise<any> {
     const { slug, id } = paramaters;
