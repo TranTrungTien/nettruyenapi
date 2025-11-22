@@ -97,7 +97,7 @@ class ComicsApi {
 
   private formatTotal(total: string): number | string {
     if (!total) return 0;
-    return total === "N/A" ? "Updating" : Number(total?.replace(/\./g, "").replace(/,/g, ""));
+    return total === "N/A" ? "0" : Number(total?.replace(/\./g, "").replace(/,/g, ""));
   }
 
   private trim(text: string): string | undefined {
@@ -167,10 +167,9 @@ class ComicsApi {
         const lastest_chapters = last_chapter ? [{ name: last_chapter, id: last_chapter_id, updated_at }] : [];
         const genres: any = []; // không có trên list
         const other_names: any = [];
-        const statusText = ""; // không có trạng thái rõ -> empty
-        const total_comments = "";
-        const followers = "";
-
+        const status = "Full";
+        const total_comments = "0";
+        const followers = "0";
         return {
           thumbnail,
           title,
@@ -180,7 +179,7 @@ class ComicsApi {
           lastest_chapters,
           genres,
           other_names,
-          status: statusText,
+          status,
           total_views,
           total_comments,
           followers,

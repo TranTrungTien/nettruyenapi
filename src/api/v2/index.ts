@@ -72,7 +72,7 @@ router.get('/images', async (req: any, res: any) => {
     const response = await axios.get(src, {
       responseType: 'stream',
       headers: {
-        referer: 'https://truyenfull.vn',
+        referer: 'https://truyenfull.vison',
         'User-Agent': userAgent.getRandom(),
       },
     });
