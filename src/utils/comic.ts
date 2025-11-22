@@ -331,13 +331,44 @@ class ComicsApi {
   }
 
   private convertText(element: Cheerio<any>): string {
-    if(!element) return '';
+    if (!element) return '';
 
-    return element.html()?.replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .trim() || ''
-  }
+    // Lấy nội dung HTML
+    let htmlContent = element.html();
+    
+    if (!htmlContent) return '';
+
+    // BƯỚC 1: Thay thế các thẻ block thành xuống dòng để giữ cấu trúc đoạn văn
+    htmlContent = htmlContent
+        .replace(/<br\s*\/?>/gi, '\n') // Thẻ <br>
+        .replace(/<\/p>/gi, '\n')      // Thẻ đóng </p>
+
+    // BƯỚC 2: Xử lý các thực thể HTML (Entity Decoding)
+    // Thay thế các thực thể ký tự bằng ký tự tương đương của chúng.
+    htmlContent = htmlContent
+        // Thay &nbsp; bằng khoảng trắng đơn
+        .replace(/&nbsp;/gi, ' ')
+        // Thay &quot; bằng "
+        .replace(/&quot;/gi, '"')
+        // Thay &apos; bằng '
+        .replace(/&apos;/gi, "'")
+        // Thay &lt; bằng <
+        .replace(/&lt;/gi, '<')
+        // Thay &gt; bằng >
+        .replace(/&gt;/gi, '>')
+        // Thay &amp; bằng & (Cần chạy cuối cùng, hoặc xử lý sau khi đã xử lý các thực thể khác)
+        // Lưu ý: Nếu trang web dùng thực thể số (vd: &#39;), cần dùng thư viện
+        .replace(/&amp;/gi, '&'); 
+
+    // BƯỚC 3: Loại bỏ tất cả các tag HTML còn lại (ví dụ: <span>, <div>, <b>)
+    htmlContent = htmlContent.replace(/<[^>]+>/g, '');
+    
+    // BƯỚC 4: Loại bỏ khoảng trắng thừa (có thể là kết quả của việc thay thế &nbsp;)
+    // và khoảng trắng ở đầu/cuối chuỗi
+    return htmlContent
+        .replace(/\s+/g, ' ') // Thay thế nhiều khoảng trắng liên tiếp bằng 1 khoảng trắng
+        .trim();
+}
 
   public async getChapterContent(paramaters: { slug: string, id: string, chapterPage?: number }): Promise<any> {
     const { slug, id } = paramaters;
