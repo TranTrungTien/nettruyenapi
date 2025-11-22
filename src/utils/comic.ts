@@ -23,12 +23,12 @@ function getMobileUA(): string {
 export type Status = "all" | "completed" | "ongoing";
 
 class ComicsApi {
-  private domain: string;
+  private domain?: string;
   private axiosInstance: AxiosInstance;
   private cookieJar: CookieJar;
 
-  constructor(domain = "https://truyenfull.vision") {
-    this.domain = domain;
+  constructor() {
+    this.domain = process.env.BASE_URL;
     this.cookieJar = new CookieJar();
 
     const inst = axios.create({
@@ -354,7 +354,7 @@ class ComicsApi {
 
     // --- BƯỚC 3: Loại bỏ tag HTML còn lại ---
     htmlContent = htmlContent.replace(/<[^>]+>/g, '');
-    
+
     // --- BƯỚC 5: Trim đầu/cuối toàn bộ text ---
     return htmlContent.trim();
   }

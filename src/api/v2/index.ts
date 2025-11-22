@@ -1,7 +1,7 @@
 import express from 'express';
 import axios from 'axios';
 import userAgent from 'random-useragent';
-import { Comics, Status } from '../../utils/comic';
+import { Comics } from '../../utils/comic';
 
 const router = express.Router();
 
@@ -72,7 +72,7 @@ router.get('/images', async (req: any, res: any) => {
     const response = await axios.get(src, {
       responseType: 'stream',
       headers: {
-        referer: 'https://truyenfull.vison',
+        referer: process.env.BASE_URL,
         'User-Agent': userAgent.getRandom(),
       },
     });

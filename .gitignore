@@ -19,3 +19,4 @@ pids/
 logs/
 results/
 .vercel
+.env.development

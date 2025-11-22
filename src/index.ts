@@ -1,3 +1,7 @@
+import dotenv from 'dotenv';
+const envFile = process.env.NODE_ENV === 'development' ? '.env.development' : '.env';
+dotenv.config({ path: envFile });
+
 import express, { Express } from 'express';
 import cors from 'cors';
 import apiRouter from './api/v1';
