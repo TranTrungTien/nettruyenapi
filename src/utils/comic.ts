@@ -292,6 +292,11 @@ class ComicsApi {
         const m = pagHref.match(/trang-(\d+)/) || pagHref.match(/page[=\/](\d+)/);
         total_chapter_pages = m ? Number(m[1]) : 1;
       }
+      const chapterPerPage = chapters?.length || 0;
+      const totalLastChaptersPage = await this.getChapters({...paramaters, chapterPage: total_chapter_pages})
+      
+      const totalLastChaptersPerPage = totalLastChaptersPage?.length || 0;
+      const totalChapterOfComic = chapterPerPage * total_chapter_pages + totalLastChaptersPerPage;
 
       const title = this.convertText($(".col-truyen-main .col-info-desc .title"));
       const thumbnail = $(".col-truyen-main .books img").attr("src") || "";
@@ -325,6 +330,7 @@ class ComicsApi {
         is_adult,
         other_names,
         total_chapter_pages,
+        total_chapters_of_comic: totalChapterOfComic
       };
     } catch (err) {
       throw err;
