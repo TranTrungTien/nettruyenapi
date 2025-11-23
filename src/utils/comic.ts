@@ -160,19 +160,20 @@ class ComicsApi {
         }
 
         // Other optional fields — try to find, otherwise empty/defaults
-        const updated_at = ""; // list page không có thời gian rõ ràng -> empty
-        const total_views = "0"; // không có
+        const updated_at = this.getDefaultText();
+        const total_views = this.getDefaultText(); 
         const is_trending = $item.find(".label-title.label-hot").length > 0;
-        const short_description = "";
+        const short_description = this.getDefaultText();
         const lastest_chapters = last_chapter ? [{ name: last_chapter, id: last_chapter_id, updated_at }] : [];
-        const genres: any = []; // không có trên list
+        const genres: any = [];
         const other_names: any = [];
         const status = "Full";
-        const total_comments = "0";
-        const followers = "0";
+        const total_comments = this.getDefaultText();
+        const followers = this.getDefaultText();
         return {
           thumbnail,
-          title,
+          title: this.getDefaultText(title),
+          href,
           id,
           is_trending,
           short_description,
@@ -201,7 +202,7 @@ class ComicsApi {
       const chapters = Array.from($("#list-chapter .list-chapter li a")).map((chap) => {
         const href = $(chap).attr("href");
         const id = href?.split("-")?.at(-1)?.replace("/", "") || '0';
-        const name = $(chap).attr("title") || $(chap).text();
+        const name = this.getDefaultText($(chap).attr("title") || $(chap).text());
         return { id, name };
       });
       return chapters;
@@ -291,12 +292,12 @@ class ComicsApi {
         const m = pagHref.match(/trang-(\d+)/) || pagHref.match(/page[=\/](\d+)/);
         total_chapter_pages = m ? Number(m[1]) : 1;
       }
-
-      const title = this.convertText($(".col-truyen-main .col-info-desc .title"));;
+      
+      const title = this.convertText($(".col-truyen-main .col-info-desc .title"));
       const thumbnail = $(".col-truyen-main .books img").attr("src") || "";
       const description = this.convertText($(".col-truyen-main .desc-text"));
-      const authors = Array.from($(".col-truyen-main .info div").filter((_: any, el: any) => $(el).text().includes("Tác giả"))).map((el) => $(el).find("a").text()).filter(Boolean) || "Không rõ";
-      const status = $(".col-truyen-main .text-success")?.text()?.trim();
+      const authors = Array.from($(".col-truyen-main .info div").filter((_: any, el: any) => $(el).text().includes("Tác giả"))).map((el) => this.getDefaultText($(el).find("a").text())).filter(Boolean);
+      const status = this.getDefaultText($(".col-truyen-main .text-success")?.text()?.trim());
       const genres = Array.from($(".col-truyen-main .info div").filter((_: any, el: any) => $(el).text().includes("Thể loại")).find("a")).map((item) => {
         const id = this.getGenreId($(item).attr("href") ?? '');
         const name = $(item).text();
@@ -304,10 +305,10 @@ class ComicsApi {
       });
       const is_adult = false; // Fix tạm
       const other_names: any = []; // Fix tạm
-      const total_views = this.formatTotal($(".col-truyen-main .info div").filter((i: any, el: any) => $(el).text().includes("Lượt xem")).find("span").text());
+      const total_views = this.formatTotal($(".col-truyen-main .info div").filter((i: any, el: any) => $(el).text().includes("Lượt xem")).find("span").text()) || this.getDefaultText();
       const rating_count = Number($(".col-truyen-main .rate-holder").attr("data-score")) || 0; // Fix tạm
       const average = Number($(".col-truyen-main .small span:last-child").text()) || 0;
-      const followers = ""; // No followers
+      const followers = this.getDefaultText(); // No followers
       return {
         title,
         thumbnail,
@@ -330,8 +331,13 @@ class ComicsApi {
     }
   }
 
+  private getDefaultText(value?: string): string {
+    if(value) return value;
+    return 'Đang cập nhật';
+  }
+
   private convertText(element: Cheerio<any>): string {
-    if (!element) return '';
+    if (!element) return this.getDefaultText();
 
     let htmlContent = element.html();
     if (!htmlContent) return '';
@@ -367,9 +373,9 @@ class ComicsApi {
         this.createRequest(`${slug}/chuong-${id}/`),
         this.getChapters(paramaters),
       ]);
-      const chapter_name = $("#chapter-big-container .chapter-title").text().trim();
-      const comic_name = $("#chapter-big-container .truyen-title").text().trim();
-      const content = this.convertText($('#chapter-c'));
+      const chapter_name = this.getDefaultText($("#chapter-big-container .chapter-title").text()?.trim());
+      const comic_name = this.getDefaultText($("#chapter-big-container .truyen-title").text()?.trim());
+      const content = this.getDefaultText(this.convertText($('#chapter-c')));
 
       return { chapter_name, comic_name, content, chapters };
     } catch (err) {
