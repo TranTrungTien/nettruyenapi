@@ -342,14 +342,12 @@ class ComicsApi {
     let htmlContent = element.html();
     if (!htmlContent) return '';
 
-    // --- BƯỚC 1: Chuyển các thẻ block thành newline ---
     htmlContent = htmlContent
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<\/p>/gi, '\n')
       .replace(/<\/div>/gi, '\n')
       .replace(/<\/li>/gi, '\n');
 
-    // --- BƯỚC 2: Decode thực thể HTML ---
     htmlContent = htmlContent
       .replace(/&nbsp;/gi, ' ')
       .replace(/&quot;/gi, '"')
@@ -358,10 +356,7 @@ class ComicsApi {
       .replace(/&gt;/gi, '>')
       .replace(/&amp;/gi, '&');
 
-    // --- BƯỚC 3: Loại bỏ tag HTML còn lại ---
     htmlContent = htmlContent.replace(/<[^>]+>/g, '');
-
-    // --- BƯỚC 5: Trim đầu/cuối toàn bộ text ---
     return htmlContent.trim();
   }
 
