@@ -293,7 +293,7 @@ class ComicsApi {
         total_chapter_pages = m ? Number(m[1]) : 1;
       }
       
-      const title = this.convertText($(".col-truyen-main .col-info-desc .title"));
+      const title = this.convertText($(".col-truyen-main .col-info-desc .title"), true);
       const thumbnail = $(".col-truyen-main .books img").attr("src") || "";
       const description = this.convertText($(".col-truyen-main .desc-text"));
       const authors = Array.from($(".col-truyen-main .info div").filter((_: any, el: any) => $(el).text().includes("Tác giả"))).map((el) => this.getDefaultText($(el).find("a").text())).filter(Boolean);
@@ -336,8 +336,9 @@ class ComicsApi {
     return 'Đang cập nhật';
   }
 
-  private convertText(element: Cheerio<any>): string {
+  private convertText(element: Cheerio<any>, isNormalizeText: boolean = false): string {
     if (!element) return this.getDefaultText();
+    if (isNormalizeText) return element.text() ?? '';
 
     let htmlContent = element.html();
     if (!htmlContent) return '';
