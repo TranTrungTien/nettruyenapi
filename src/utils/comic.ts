@@ -28,7 +28,7 @@ class ComicsApi {
   private cookieJar: CookieJar;
 
   constructor() {
-    this.domain = process.env.BASE_URL;
+    this.domain = process.env.BASE_URL_V2;
     this.cookieJar = new CookieJar();
 
     const inst = axios.create({

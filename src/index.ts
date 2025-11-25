@@ -6,6 +6,7 @@ import express, { Express } from 'express';
 import cors from 'cors';
 import apiRouter from './api/v1';
 import v2Router from './api/v2';
+import v3Router from './api/v3';
 
 const app: Express = express();
 
@@ -19,6 +20,7 @@ app.use(express.json());
 
 app.use('/api/v1', apiRouter);
 app.use('/api/v2', v2Router);
+app.use('/api/v3', v3Router);
 
 app.get('/', (req, res) => {
   res.json({ status: 'ok' });
