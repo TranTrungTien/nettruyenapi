@@ -84,11 +84,6 @@ class SSStoryApi {
         }
     }
 
-    private getGenreId(link: string): string | undefined {
-        if (!link) return "";
-        return link.split("/").at(-2) || "";
-    }
-
     private getDefaultText(value?: string): string {
         if (value) return value;
         return 'Đang cập nhật';
@@ -116,6 +111,10 @@ class SSStoryApi {
 
         htmlContent = htmlContent.replace(/<[^>]+>/g, '');
         return htmlContent.trim();
+    }
+
+    private convertHrefToId(value: string, position: number = 1): string {
+        return value?.split('/')?.[position] ?? ''
     }
 
     private async getBookIdFromSlug(slug: string): Promise<string> {
@@ -174,7 +173,7 @@ class SSStoryApi {
                 const titleA = $item.find("h3 a").first();
                 const title = this.getDefaultText(titleA.text());
                 const href = titleA.attr("href") || "";
-                const id = href;
+                const id = this.convertHrefToId(href, 1);
 
                 const thumbnail = $item.find(".cover img").attr("src") || "";
                 const fullThumbnail = thumbnail.startsWith("http") ? thumbnail : `${this.domain}${thumbnail}`;
@@ -190,7 +189,7 @@ class SSStoryApi {
                     .map((_, el) => {
                         const name = this.getDefaultText($(el).text());
                         const href = $(el).attr("href") || "";
-                        const id = this.getGenreId(href);
+                        const id = this.convertHrefToId(href, 2);
                         return { id, name };
                     })
                     .get();
@@ -346,7 +345,7 @@ class SSStoryApi {
                 const description = el.attr("title");
 
                 return {
-                    id: href?.split("/")?.[2] ?? '',
+                    id: this.convertHrefToId(href, 2),
                     name,
                     description,
                     url: href
@@ -442,7 +441,7 @@ class SSStoryApi {
 
             const genres = $(".book-info-text li.li--genres a").map((_, el) => {
                 const href = $(el).attr("href") || "";
-                const id = this.getGenreId(href);
+                const id = this.convertHrefToId(href, 2);
                 const name = $(el).text();
                 return { id, name };
             }).get();
