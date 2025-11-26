@@ -184,7 +184,7 @@ class SSStoryApi {
                         const name = this.getDefaultText($(el).text());
                         return name;
                     })
-                    .get().join(", ");
+                    .get();
 
                 const genres = $item.find("p.line:contains('Thể loại') a")
                     .map((_, el) => {
@@ -435,7 +435,7 @@ class SSStoryApi {
 
             const authors = $(".book-info-text li").filter((_, el) =>
                 $(el).text().includes("Tác giả")
-            ).find("a").map((_, el) => $(el).text()).get().join(", ");
+            ).find("a").map((_, el) => $(el).text()).get();
 
             const statusText = $(".label-status").text().trim();
             const status = this.getDefaultText(statusText);
