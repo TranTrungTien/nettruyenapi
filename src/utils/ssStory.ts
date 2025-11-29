@@ -366,17 +366,80 @@ class SSStoryApi {
         }
     }
 
-    public async getRecentUpdateStory(page: number = 1): Promise<any> {
+    public async getRecentUpdateStory(): Promise<any> {
         try {
+            const $ = await this.createRequest('/') as CheerioAPI;
+            const comics = $('.main-wrapper .itemupdate').map((_, element) => {
+                const $item = $(element);
+
+                const titleLink = $item.find('.iname h3 a').first();
+                const title = titleLink.text().trim().replace(/^\s*›\s*/, '').trim();
+                const href = titleLink.attr('href')?.replace(/^\//, '') || '';
+                const id = href.split('/').filter(Boolean)[0] || href;
+
+                const genres = $item.find('.icate a').map((_, el) => {
+                    const name = $(el).text().trim();
+                    const genreHref = $(el).attr('href') || '';
+                    const genreId = genreHref.replace('/the-loai/', '');
+                    return { id: genreId, name };
+                }).get();
+
+                const chapterLink = $item.find('.ichapter a').first();
+                const chapterText = chapterLink.text().trim();
+                const totalChaptersMatch = chapterText.match(/(\d+)\s*chương/i);
+                const totalChapters = totalChaptersMatch ? parseInt(totalChaptersMatch[1], 10) : 0;
+
+                const latestChapterHref = chapterLink.attr('href') || '';
+                const latestChapterId = latestChapterHref.split('/').pop() || '';
+
+                const updatedAtText = $item.find('.iupdated').text().trim();
+
+                const isFull = $item.find('.status .status-full').length > 0;
+                const isNew = $item.find('.status .status-new').length > 0;
+                const status = isFull ? 'Full' : 'Đang cập nhật';
+
+                return {
+                    id,
+                    title,
+                    href: href,
+                    thumbnail: '',
+                    fullThumbnail: '',
+                    genres,
+                    status,
+                    isNew: isNew,
+                    totalChapters,
+                    latestChapter: {
+                        name: chapterText,
+                        href: latestChapterHref,
+                        id: latestChapterId
+                    },
+                    updatedAt: updatedAtText,
+                    authors: [],
+                    otherNames: [],
+                    shortDescription: '',
+                    totalViews: 0,
+                    followers: 0,
+                    totalComments: 0,
+                    isTrending: false,
+                    isHot: false,
+                    isCompleted: isFull
+                };
+            }).get();
+            return {
+                comics,
+                currentPage: 1,
+                totalPages: 1,
+                hasMorePages: false,
+            };
+
+        } catch (error) {
             return {
                 comics: [],
-                totalPages: 0,
-                currentPage: 0,
-                hasMorePages: false
+                currentPage: 1,
+                totalPages: 1,
+                hasMorePages: false,
             };
-        } catch (err) {
-            throw err;
-        }
+        };
     }
 
     public async getCompletedStory(page: number = 1): Promise<any> {
