@@ -146,7 +146,7 @@ class SSStoryApi {
             const fullPath = isCompletedPath ? path : `${path}${page > 1 ? `?page=${page}` : ''}`;
             const $ = await this.createRequest(fullPath) as CheerioAPI;
 
-            let total_pages = 1;
+            let totalPages = 1;
             const pageLinks = $(".phan-trang a.btn-page");
             if (pageLinks.length > 0) {
                 const maxPage = pageLinks
@@ -158,12 +158,12 @@ class SSStoryApi {
                     })
                     .get()
                     .filter(n => n > 0);
-                total_pages = maxPage.length > 0 ? Math.max(...maxPage) : 1;
+                totalPages = maxPage.length > 0 ? Math.max(...maxPage) : 1;
             }
 
-            const has_more_pages = total_pages > 1 || $(".phan-trang a:contains('❭')").length > 0;
+            const hasMorePages = totalPages > 1 || $(".phan-trang a:contains('❭')").length > 0;
 
-            if (page > total_pages) {
+            if (page > totalPages) {
                 return { status: 404, message: "Page not found" };
             }
 
@@ -198,43 +198,43 @@ class SSStoryApi {
                 const status = statusElem.hasClass("status-full") ? "Full" : this.getDefaultText();
 
                 const chapterText = $item.find("p.line:contains('Số chương')").text();
-                const total_chapters = chapterText.match(/(\d+)/) ? Number(RegExp.$1) : 0;
+                const totalChapters = chapterText.match(/(\d+)/) ? Number(RegExp.$1) : 0;
 
-                const lastest_chapters: any[] = [];
+                const lastestChapters: any[] = [];
 
-                const updated_at = this.getDefaultText();
-                const total_views = this.getDefaultText();
-                const is_trending = false;
-                const short_description = this.getDefaultText();
-                const total_comments = this.getDefaultText();
+                const updatedAt = this.getDefaultText();
+                const totalViews = this.getDefaultText();
+                const isTrending = false;
+                const shortDescription = this.getDefaultText();
+                const totalComments = this.getDefaultText();
                 const followers = this.getDefaultText();
-                const other_names: any[] = [];
+                const otherNames: any[] = [];
 
                 return {
                     thumbnail: fullThumbnail,
                     title: this.getDefaultText(title),
                     href,
                     id,
-                    is_trending,
-                    short_description,
-                    lastest_chapters,
+                    isTrending,
+                    shortDescription,
+                    lastestChapters,
                     genres,
-                    other_names,
+                    otherNames,
                     status,
-                    total_views,
-                    total_comments,
+                    totalViews,
+                    totalComments,
                     followers,
-                    updated_at,
+                    updatedAt,
                     authors,
-                    total_chapters
+                    totalChapters
                 };
             });
 
             return {
                 comics,
-                total_pages,
-                current_page: page,
-                has_more_pages
+                totalPages,
+                currentPage: page,
+                hasMorePages
             };
         } catch (err) {
             throw err;
@@ -317,9 +317,9 @@ class SSStoryApi {
                 return {
                     id: chapterSlug,
                     name: title,
-                    chapter_number: chapterNum,
+                    chapterNumber: chapterNum,
                     url: `${this.domain}/${href}`,
-                    updated_at: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
                 };
             }).get();
             return chapters;
@@ -370,9 +370,9 @@ class SSStoryApi {
         try {
             return {
                 comics: [],
-                total_pages: 0,
-                current_page: 0,
-                has_more_pages: false
+                totalPages: 0,
+                currentPage: 0,
+                hasMorePages: false
             };
         } catch (err) {
             throw err;
@@ -419,7 +419,7 @@ class SSStoryApi {
                 this.createRequest(`${slug}/`),
                 this.getChapters(parameters),
             ]);
-            let total_chapter_pages = this.getTotalChapterPages($);
+            let totalChapterPages = this.getTotalChapterPages($);
 
             const title = $("h1[itemprop='name']").text() || $(".title").text();
 
@@ -446,21 +446,21 @@ class SSStoryApi {
                 return { id, name };
             }).get();
 
-            const other_names: string[] = [];
-            let total_views = this.getDefaultText();;
+            const otherNames: string[] = [];
+            let totalViews = this.getDefaultText();;
             const viewText = $(".book-info-text li").filter((_, el) =>
                 $(el).text().includes("Lượt xem")
             ).text();
             const viewMatch = viewText.match(/[\d,]+/);
-            if (viewMatch) total_views = viewMatch[0].replace(/,/g, "");
+            if (viewMatch) totalViews = viewMatch[0].replace(/,/g, "");
             const chapterCountText = $(".book-info-text li:contains('Số chương')").text();
             const chapterCountMatch = chapterCountText.match(/Số chương\D*(\d+)/i);
-            const displayed_chapter_count = chapterCountMatch && Number(chapterCountMatch[1]);
-            const rating_count = this.getDefaultText($(".rate-holder").attr("data-score"));
+            const totalChapters = chapterCountMatch && Number(chapterCountMatch[1]);
+            const ratingCount = this.getDefaultText($(".rate-holder").attr("data-score"));
             const average = this.getDefaultText($(".book-rating .rate_row_result").text().match(/\d+\.?\d*/)?.[0]);
             const followers = this.getDefaultText();
             const translators: string[] = [];
-            const is_adult = false;
+            const isAdult = false;
 
             return {
                 title,
@@ -469,16 +469,16 @@ class SSStoryApi {
                 authors,
                 status,
                 genres,
-                total_views,
+                totalViews,
                 average,
-                rating_count,
+                ratingCount,
                 followers,
                 chapters,
                 id: slug,
-                is_adult,
-                other_names,
-                total_chapter_pages,
-                total_chapters_of_comic: displayed_chapter_count,
+                isAdult,
+                otherNames,
+                totalChapterPages,
+                totalChapters,
                 translators,
             };
 
@@ -494,24 +494,24 @@ class SSStoryApi {
             const $ = await this.createRequest(`${slug}/${id}/`) as CheerioAPI;
 
             const pageTitle = $('title').text() ?? '';
-            const chapter_name = pageTitle.split(' - ').length > 1
+            const chapterName = pageTitle.split(' - ').length > 1
                 ? pageTitle.split(' - ')[1]
                 : $("#chapter-big-container .chapter-title").text();
 
-            const comic_name = pageTitle.split(' - ').length > 1
+            const comicName = pageTitle.split(' - ').length > 1
                 ? pageTitle.split(' - ')[0].replace(/ \(Full\)$/i, "")
                 : $("#chapter-big-container .truyen-title").text() || $('script#recently_viewed').text().match(/"title":"([^"]+)"/)?.[1];
 
             const content = this.convertText($("#vungdoc .truyen"));
-            const chapter_number_match = id.match(/chuong-(\d+)/i);
-            const chapter_number = chapter_number_match ? Number(chapter_number_match[1]) : 0;
+            const match = id.match(/chuong-(\d+)/i);
+            const chapterNumber = match ? Number(match[1]) : 0;
 
             return {
-                chapter_name,
-                comic_name,
+                chapterName,
+                comicName,
                 content,
                 chapters: [],
-                chapter_number
+                chapterNumber
             };
         } catch (err) {
             console.error("Error crawling chapter from sstruyen.com.vn:", err);
