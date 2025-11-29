@@ -59,7 +59,7 @@ class SSStoryApi {
         await new Promise((res) => setTimeout(res, ms));
     }
 
-    public async createRequest(path: string, shouldReturnRawData = false): Promise<any> {
+    public async createRequest(path?: string, shouldReturnRawData = false): Promise<any> {
         const url = `${this.domain}/${path}`.replace(/\?+/g, "?");
         console.log("Fetching:", url);
 
@@ -368,7 +368,7 @@ class SSStoryApi {
 
     public async getRecentUpdateStory(): Promise<any> {
         try {
-            const $ = await this.createRequest('/') as CheerioAPI;
+            const $ = await this.createRequest() as CheerioAPI;
             const comics = $('.main-wrapper .itemupdate').map((_, element) => {
                 const $item = $(element);
 
