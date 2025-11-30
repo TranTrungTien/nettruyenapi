@@ -92,7 +92,7 @@ router.get('/images', asyncHandler(async (req: Request, res: Response, next: Nex
     const response = await axios.get(src, {
         responseType: 'stream',
         headers: {
-            referer: process.env.BASE_URL, // Use the correct referer
+            referer: process.env.BASE_URL_V3,
             'User-Agent': userAgent.getRandom(),
         },
     });
