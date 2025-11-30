@@ -1,85 +1,90 @@
-import express from 'express';
+
+import express, { NextFunction, Request, Response } from 'express';
 import axios from 'axios';
 import userAgent from 'random-useragent';
 import { Comics } from '../../utils/comic';
 
 const router = express.Router();
 
-// Genres
-router.get('/genres', async (req, res) => {
-  res.send(await Comics.getGenres());
-});
+// Wrapper for async routes to catch errors and pass them to the error handler
+const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) => 
+    (req: Request, res: Response, next: NextFunction) => 
+        Promise.resolve(fn(req, res, next)).catch(next);
 
-router.get('/genres/:slug', async (req, res) => {
-  const { params, query } = req;
-  const slug = params.slug;
-  const page = query.page ? Number(query.page) : 1;
+// --- ROUTE DEFINITIONS ---
+
+// Genres
+router.get('/genres', asyncHandler(async (req, res) => {
+  res.send(await Comics.getGenres());
+}));
+
+router.get('/genres/:slug', asyncHandler(async (req, res) => {
+  const { slug } = req.params;
+  const page = req.query.page ? Number(req.query.page) : 1;
   res.send(await Comics.getComicsByGenre(slug, page));
-});
+}));
 
 // Recommend Comics
-router.get('/recommend-comics', async (req, res) => {
+router.get('/recommend-comics', asyncHandler(async (req, res) => {
   res.json(await Comics.getRecommendComics());
-});
+}));
 
 // Search
-router.get('/search', async (req, res) => {
-  const { query } = req;
-  const q = query.q ? query.q : '';
-  if (!q) throw Error('Invalid query');
-  const page = query.page ? Number(query.page) : 1;
-  res.json(await Comics.searchComics(q as string, page));
-});
-
-// Page params
-const pageParamsApiPaths = [
-  { path: '/completed-comics', callback: (...params: any) => Comics.getCompletedComics(...params) },
-  { path: '/recent-update-comics', callback: (...params: any) => Comics.getRecentUpdateComics(...params) },
-  { path: '/trending-comics', callback: (...params: any) => Comics.getTrendingComics(...params) },
-];
-
-pageParamsApiPaths.forEach(({ path, callback }) => {
-  router.get(path, async (req, res) => {
-    const { query } = req;
-    const page = query.page ? Number(query.page) : 1;
-    res.json(await callback(page));
-  });
-});
-
-// Comics
-const comicIdParamsApiPaths = [
-  { path: '/comics/:slug/chapters/:chapter_id', callback: (paramaters: { slug: string, id: string }) => Comics.getChapterContent(paramaters) },
-  { path: '/comics/:slug/:chapter_page', callback: (paramaters: { slug: string, id?: string }) => Comics.getChapters(paramaters) },
-  { path: '/comics/:slug', callback: (paramaters: { slug: string, id?: string }) => Comics.getComicDetail(paramaters) },
-];
-
-comicIdParamsApiPaths.forEach(({ path, callback }) => {
-  router.get(path, async (req, res) => {
-    const { params } = req;
-    const slug = params.slug;
-    const id = params.chapter_id;
-    const chapterPage = params.chapter_page;
-    const paramaters = { slug, id, chapterPage };    
-    if (!slug) throw Error('Invalid');
-    res.json(await callback(paramaters));
-    return;
-  });
-});
-
-router.get('/images', async (req: any, res: any) => {
-  try {
-    const { src } = req.query;
-    const response = await axios.get(src, {
-      responseType: 'stream',
-      headers: {
-        referer: process.env.BASE_URL,
-        'User-Agent': userAgent.getRandom(),
-      },
-    });
-    response.data.pipe(res);
-  } catch (err) {
-    throw err;
+router.get('/search', asyncHandler(async (req, res, next) => {
+  const q = req.query.q as string;
+  if (!q) {
+    return next(new Error('Query parameter \'q\' is required'));
   }
+  const page = req.query.page ? Number(req.query.page) : 1;
+  res.json(await Comics.searchComics(q, page));
+}));
+
+// Page-parameterized routes
+const pagedRoutes = [
+  { path: '/completed-comics', method: Comics.getCompletedComics },
+  { path: '/recent-update-comics', method: Comics.getRecentUpdateComics },
+  { path: '/trending-comics', method: Comics.getTrendingComics },
+];
+
+pagedRoutes.forEach(({ path, method }) => {
+  router.get(path, asyncHandler(async (req, res) => {
+    const page = req.query.page ? Number(req.query.page) : 1;
+    res.json(await method(page));
+  }));
 });
+
+// Detail and chapter routes
+router.get('/comics/:slug/chapters/:chapter_id', asyncHandler(async (req, res) => {
+  const { slug, chapter_id } = req.params;
+  res.json(await Comics.getChapterContent({ slug, id: chapter_id }));
+}));
+
+router.get('/comics/:slug/:chapter_page', asyncHandler(async (req, res) => {
+  const { slug, chapter_page } = req.params;
+  res.json(await Comics.getChapters({ slug, chapterPage: Number(chapter_page) }));
+}));
+
+router.get('/comics/:slug', asyncHandler(async (req, res) => {
+  const { slug } = req.params;
+  res.json(await Comics.getComicDetail({ slug }));
+}));
+
+// Image proxy
+router.get('/images', asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  const src = req.query.src as string;
+  if (!src) {
+    return next(new Error('Image source (src) is required'));
+  }
+
+  const response = await axios.get(src, {
+    responseType: 'stream',
+    headers: {
+      referer: process.env.BASE_URL_V2, // Use V2 base URL as referer
+      'User-Agent': userAgent.getRandom(),
+    },
+  });
+
+  response.data.pipe(res);
+}));
 
 export default router;

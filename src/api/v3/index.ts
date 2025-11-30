@@ -1,85 +1,103 @@
-import express from 'express';
+
+import express, { NextFunction, Request, Response } from 'express';
 import axios from 'axios';
 import userAgent from 'random-useragent';
 import { SSStory } from '../../utils/ssStory';
 
 const router = express.Router();
 
-// Genres
-router.get('/genres', async (req, res) => {
-  res.send(await SSStory.getGenres());
-});
+// Wrapper for async routes to catch errors and pass them to the error handler
+const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) => 
+    (req: Request, res: Response, next: NextFunction) => 
+        Promise.resolve(fn(req, res, next)).catch(next);
 
-router.get('/genres/:slug', async (req, res) => {
+// --- ROUTE DEFINITIONS ---
+
+// Genres
+router.get('/genres', asyncHandler(async (req, res) => {
+  res.send(await SSStory.getGenres());
+}));
+
+router.get('/genres/:slug', asyncHandler(async (req, res) => {
   const { params, query } = req;
-  const slug = params.slug;
   const page = query.page ? Number(query.page) : 1;
-  res.send(await SSStory.getStoryByGenre(slug, page));
-});
+  res.send(await SSStory.getStoryByGenre(params.slug, page));
+}));
 
 // Recommend story
-router.get('/recommend-story', async (req, res) => {
+router.get('/recommend-story', asyncHandler(async (req, res) => {
   res.json(await SSStory.getRecommendStory());
-});
+}));
 
 // Search
-router.get('/search', async (req, res) => {
+router.get('/search', asyncHandler(async (req, res, next) => {
   const { query } = req;
-  const q = query.q ? query.q : '';
-  if (!q) throw Error('Invalid query');
+  const q = query.q as string;
+  if (!q) {
+    // Instead of throwing, we pass an error to the next middleware
+    return next(new Error('Invalid query: q is required'));
+  }
   const page = query.page ? Number(query.page) : 1;
-  res.json(await SSStory.searchStory(q as string, page));
-});
+  res.json(await SSStory.searchStory(q, page));
+}));
 
-// Page params
+// Page-parameterized API paths
 const pageParamsApiPaths = [
-  { path: '/completed-story', callback: (...params: any) => SSStory.getCompletedStory(...params) },
-  { path: '/recent-update-story', callback: (...params: any) => SSStory.getRecentUpdateStory() },
-  { path: '/trending-story', callback: (...params: any) => SSStory.getTrendingStory(...params) },
+  { path: '/completed-story', callback: (page: number) => SSStory.getCompletedStory(page) },
+  { path: '/recent-update-story', callback: () => SSStory.getRecentUpdateStory() }, // Does not take a page param, but fits the pattern
+  { path: '/trending-story', callback: (page: number) => SSStory.getTrendingStory(page) },
 ];
 
 pageParamsApiPaths.forEach(({ path, callback }) => {
-  router.get(path, async (req, res) => {
-    const { query } = req;
-    const page = query.page ? Number(query.page) : 1;
-    res.json(await callback(page));
-  });
+  router.get(path, asyncHandler(async (req, res) => {
+    const page = req.query.page ? Number(req.query.page) : 1;
+    // The callback is called with the page parameter, ensuring consistency
+    res.json(await (callback as any)(page));
+  }));
 });
 
-// story
-const comicIdParamsApiPaths = [
-  { path: '/story/:slug/chapters/:chapter_id', callback: (paramaters: { slug: string, id: string }) => SSStory.getChapterContent(paramaters) },
-  { path: '/story/:slug/:chapter_page', callback: (paramaters: { slug: string, id?: string }) => SSStory.getChapters(paramaters) },
-  { path: '/story/:slug', callback: (paramaters: { slug: string, id?: string }) => SSStory.getStoryDetail(paramaters) },
+// Story and Chapter specific API paths
+const storyApiPaths = [
+  { 
+    path: '/story/:slug/chapters/:chapter_id', 
+    callback: (params: any) => SSStory.getChapterContent({ slug: params.slug, id: params.chapter_id })
+  },
+  { 
+    path: '/story/:slug/:chapter_page', 
+    callback: (params: any) => SSStory.getChapters({ slug: params.slug, chapterPage: params.chapter_page })
+  },
+  { 
+    path: '/story/:slug', 
+    callback: (params: any) => SSStory.getStoryDetail({ slug: params.slug })
+  },
 ];
 
-comicIdParamsApiPaths.forEach(({ path, callback }) => {
-  router.get(path, async (req, res) => {
-    const { params } = req;
-    const slug = params.slug;
-    const id = params.chapter_id;
-    const chapterPage = params.chapter_page;
-    const paramaters = { slug, id, chapterPage };    
-    if (!slug) throw Error('Invalid');
-    res.json(await callback(paramaters));
-    return;
-  });
+storyApiPaths.forEach(({ path, callback }) => {
+  router.get(path, asyncHandler(async (req, res, next) => {
+    const { slug } = req.params;
+    if (!slug) {
+        return next(new Error('Invalid parameters: slug is required'));
+    }
+    res.json(await callback(req.params));
+  }));
 });
 
-router.get('/images', async (req: any, res: any) => {
-  try {
-    const { src } = req.query;
+// Image proxy
+router.get('/images', asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    const src = req.query.src as string;
+    if (!src) {
+        return next(new Error('Image source (src) is required'));
+    }
+
     const response = await axios.get(src, {
-      responseType: 'stream',
-      headers: {
-        referer: process.env.BASE_URL,
-        'User-Agent': userAgent.getRandom(),
-      },
+        responseType: 'stream',
+        headers: {
+            referer: process.env.BASE_URL, // Use the correct referer
+            'User-Agent': userAgent.getRandom(),
+        },
     });
+
     response.data.pipe(res);
-  } catch (err) {
-    throw err;
-  }
-});
+}));
 
 export default router;

@@ -1,397 +1,289 @@
 
-import axios from "axios";
+import axios, { AxiosInstance } from "axios";
 import axiosRetry from "axios-retry";
-import { Cheerio, load } from "cheerio";
+import { Cheerio, CheerioAPI, load } from "cheerio";
 import { CookieJar } from "tough-cookie";
 import { wrapper as axiosCookieJarSupport } from "axios-cookiejar-support";
 import randomUserAgent from "random-useragent";
-import { AxiosInstance } from "axios";
-import { CheerioAPI } from "cheerio";
+
+// --- CONSTANTS AND SELECTORS ---
 
 const MOBILE_UA_FALLBACKS = [
-  "Mozilla/5.0 (Linux; Android 12; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
-  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (Linux; Android 12; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
 ];
 
-function getMobileUA(): string {
-  const ua = randomUserAgent.getRandom(
-    (u: any) => !!u && /Mobile|Android|iPhone/i.test(u)
-  );
-  return ua || MOBILE_UA_FALLBACKS[Math.floor(Math.random() * MOBILE_UA_FALLBACKS.length)];
-}
+const SELECTORS = {
+    // Comic List
+    comicList: {
+        item: ".col-truyen-main .list-truyen .row",
+        titleLink: [".truyen-title a", ".col-xs-7 a"], // Array of possible selectors
+        thumbnail: ".lazyimg",
+        author: ".author",
+        lastChapterLink: [".text-info a", ".col-xs-2 a"],
+        trendingIcon: ".label-title.label-hot",
+        pagination: [".col-truyen-main .pagination li:eq(-2) a", ".paging a:last-child", "ul.pagination li:last-child a"],
+    },
+    // Comic Detail
+    comicDetail: {
+        title: ".col-truyen-main .col-info-desc .title",
+        thumbnail: ".col-truyen-main .books img",
+        description: ".col-truyen-main .desc-text",
+        authors: ".col-truyen-main .info div:contains('Tác giả') a",
+        status: ".col-truyen-main .text-success",
+        genres: ".col-truyen-main .info div:contains('Thể loại') a",
+        totalViews: ".col-truyen-main .info div:contains('Lượt xem') span",
+        ratingCount: ".col-truyen-main .rate-holder",
+        averageRating: ".col-truyen-main .small span:last-child",
+        chapterListPagination: "#list-chapter .pagination li",
+    },
+    // Chapter List
+    chapterList: {
+        item: "#list-chapter .list-chapter li a",
+    },
+    // Chapter Content
+    chapterContent: {
+        chapterName: "#chapter-big-container .chapter-title",
+        comicName: "#chapter-big-container .truyen-title",
+        content: '#chapter-c',
+    },
+    // Genres Page
+    genreList: ".navbar-nav li.dropdown:contains('Danh sách') .dropdown-menu a",
+};
 
-export type Status = "all" | "completed" | "ongoing";
+// --- UTILITY FUNCTIONS ---
+
+function getMobileUA(): string {
+    const ua = randomUserAgent.getRandom((u: any) => !!u && /Mobile|Android|iPhone/i.test(u));
+    return ua || MOBILE_UA_FALLBACKS[Math.floor(Math.random() * MOBILE_UA_FALLBACKS.length)];
+}
 
 class ComicsApi {
-  private domain?: string;
-  private axiosInstance: AxiosInstance;
-  private cookieJar: CookieJar;
+    private domain?: string;
+    private axiosInstance: AxiosInstance;
 
-  constructor() {
-    this.domain = process.env.BASE_URL_V2;
-    this.cookieJar = new CookieJar();
-
-    const inst = axios.create({
-      timeout: 15000,
-      headers: {
-        "User-Agent": getMobileUA(),
-        "Accept":
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
-        "Connection": "keep-alive",
-      },
-    });
-
-    axiosCookieJarSupport(inst);
-    (inst.defaults as any).jar = this.cookieJar;
-
-    axiosRetry(inst, {
-      retries: 3,
-      retryDelay: (count) => count * 1000,
-      retryCondition: (error) =>
-        axiosRetry.isNetworkOrIdempotentRequestError(error) ||
-        [429, 502, 503, 504].includes(error.response?.status as number),
-    });
-
-    this.axiosInstance = inst;
-  }
-
-  private async randomDelay(min = 500, max = 1500): Promise<void> {
-    const ms = Math.floor(Math.random() * (max - min + 1)) + min;
-    await new Promise((res) => setTimeout(res, ms));
-  }
-
-  /**
-   * Gửi request tới 1 path (VD: "truyen/one-piece")
-   */
-  public async createRequest(path: string): Promise<CheerioAPI> {
-    const url = `${this.domain}/${path}`.replace(/\?+/g, "?");
-    console.log("Fetching:", url);
-
-    await this.randomDelay();
-
-    try {
-      const resp = await this.axiosInstance.get(url, {
-        withCredentials: true,
-        headers: {
-          "User-Agent": getMobileUA(),
-          "Referer": this.domain,
-        },
-      });
-      return load(resp.data);
-    } catch (err: any) {
-      console.error("❌ Request failed:", err.message);
-      throw err;
+    constructor() {
+        this.domain = process.env.BASE_URL_V2;
+        this.axiosInstance = this._initAxios();
     }
-  }
 
-  private getComicId(link?: string): string | undefined {
-    if (!link) return "";
-    return link.split("/").at(-2) || ""; // Adjusted for truyenfull slug
-  }
+    private _initAxios(): AxiosInstance {
+        const jar = new CookieJar();
+        const inst = axios.create({
+            timeout: 15000,
+            headers: {
+                "User-Agent": getMobileUA(),
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Connection": "keep-alive",
+            },
+        });
 
-  private getGenreId(link: string): string | undefined {
-    if (!link) return "";
-    return link.split("/").at(-2) || "";
-  }
+        axiosCookieJarSupport(inst);
+        (inst.defaults as any).jar = jar;
 
-  private formatTotal(total: string): number | string {
-    if (!total) return 0;
-    return total === "N/A" ? "0" : Number(total?.replace(/\./g, "").replace(/,/g, ""));
-  }
+        axiosRetry(inst, {
+            retries: 3,
+            retryDelay: (count) => count * 1000,
+            retryCondition: (error) =>
+                axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+                [429, 502, 503, 504].includes(error.response?.status as number),
+        });
 
-  private trim(text: string): string | undefined {
-    return text?.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
-  }
+        return inst;
+    }
+    
+    private async createRequest(path: string): Promise<CheerioAPI> {
+        const url = `${this.domain}/${path}`.replace(/\?+/g, "?");
+        console.log("Fetching:", url);
+        // await this.randomDelay();
+        try {
+            const resp = await this.axiosInstance.get(url, { headers: { "Referer": this.domain } });
+            return load(resp.data);
+        } catch (err: any) {
+            console.error(`❌ Request failed for ${url}:`, err.message);
+            throw err;
+        }
+    }
 
-  private async getComics(path: string, page: number = 1): Promise<any> {
-    try {
-      const fullPath = `${path}${page > 1 ? `trang-${page}/` : ''}`;
-      const $ = await this.createRequest(fullPath);
+    // --- CORE HELPERS ---
 
-      // Try several pagination selectors; nếu không tìm thấy => 1
-      let total_pages = 1;
-      const pagHref = $(".col-truyen-main .pagination li:eq(-2) a").attr("href")
-        || $(".paging a:last-child").attr("href")
-        || $("ul.pagination li:last-child a").attr("href");
-      if (pagHref) {
-        const m = pagHref.match(/trang-(\d+)/) || pagHref.match(/page[=\/](\d+)/);
-        total_pages = m ? Number(m[1]) : 1;
-      }
+    private _get(element: Cheerio<any>, selector: string | string[]) {
+        if (Array.isArray(selector)) {
+            for (const s of selector) {
+                const result = element.find(s);
+                if (result.length) return result.first();
+            }
+            return element.find('selector-that-does-not-exist');
+        } 
+        return element.find(selector).first();
+    }
 
-      if (page > total_pages) {
-        return { status: 404, message: "Page not found" };
-      }
+    private _getId = (link?: string, position: number = -2): string => link?.split("/").at(position) || "";
+    private _formatTotal = (total?: string): number => total ? Number(total.replace(/[.,]/g, "")) : 0;
+    private _trim = (text?: string): string => text?.replace(/\n/g, " ").replace(/\s+/g, " ").trim() || "";
+    private _getDefaultText = (value?: string): string => this._trim(value) || 'Đang cập nhật';
+    private _convertText = (element: Cheerio<any>): string => this._trim(element.text());
 
-      const comics = Array.from($(".col-truyen-main .list-truyen .row")).map((item) => {
+    // --- PARSERS ---
+
+    private _parseComicItem($: CheerioAPI, item: any) {
         const $item = $(item);
+        const titleLink = this._get($item, SELECTORS.comicList.titleLink);
+        const href = titleLink.attr("href") || "";
+        const thumbDiv = this._get($item, SELECTORS.comicList.thumbnail);
+        const chapterLink = this._get($item, SELECTORS.comicList.lastChapterLink);
+        const chapterHref = chapterLink.attr("href") || "";
+        const chapterMatch = chapterHref.match(/chuong-(\d+)/) || chapterHref.match(/-(\d+)\/?$/);
 
-        // Title anchor
-        const titleA = $item.find(".truyen-title a").first().length ? $item.find(".truyen-title a").first() : $item.find(".col-xs-7 a").first();
-        const title = titleA && titleA.attr("title")
-          ? this.trim(titleA.attr("title") ?? '')
-          : this.trim(titleA.text() || "");
-        const href = titleA && titleA.attr("href") ? titleA.attr("href") : "";
-        const id = href ? this.getComicId(href) : "";
-
-        // Thumbnail: data-image or data-desk-image on .lazyimg, or img src fallback
-        const thumbDiv = $item.find(".lazyimg").first();
-        const thumbnail = thumbDiv.attr("data-image") || thumbDiv.attr("data-desk-image") || thumbDiv.find("img").attr("src") || "";
-
-        // Authors: remove icon text if present
-        let authors = [];
-        const authorEl = $item.find(".author").first();
-        if (authorEl && authorEl.length) {
-          // remove any child icons/text that aren't author name
-          const cloned = authorEl.clone();
-          cloned.find(".glyphicon").remove();
-          authors.push(this.trim(cloned.text()) || "");
-        }
-
-        // Last chapter text and id
-        const chapterA = $item.find(".text-info a").first().length ? $item.find(".text-info a").first() : $item.find(".col-xs-2 a").first();
-        let last_chapter = "";
-        let last_chapter_id = 0;
-        if (chapterA && chapterA.length) {
-          last_chapter = this.trim(chapterA.text()) || "";
-          const chHref = chapterA.attr("href") || "";
-          const chMatch = chHref.match(/chuong-(\d+)/) || chHref.match(/-(\d+)\/?$/);
-          last_chapter_id = chMatch ? Number(chMatch[1]) : 0;
-        }
-
-        // Other optional fields — try to find, otherwise empty/defaults
-        const updated_at = this.getDefaultText();
-        const total_views = this.getDefaultText(); 
-        const is_trending = $item.find(".label-title.label-hot").length > 0;
-        const short_description = this.getDefaultText();
-        const lastest_chapters = last_chapter ? [{ name: last_chapter, id: last_chapter_id, updated_at }] : [];
-        const genres: any = [];
-        const other_names: any = [];
-        const status = "Full";
-        const total_comments = this.getDefaultText();
-        const followers = this.getDefaultText();
         return {
-          thumbnail,
-          title: this.getDefaultText(title),
-          href,
-          id,
-          is_trending,
-          short_description,
-          lastest_chapters,
-          genres,
-          other_names,
-          status,
-          total_views,
-          total_comments,
-          followers,
-          updated_at,
-          authors,
+            title: this._getDefaultText(titleLink.attr("title") || titleLink.text()),
+            id: this._getId(href),
+            href,
+            thumbnail: thumbDiv.attr("data-image") || thumbDiv.attr("data-desk-image") || thumbDiv.find("img").attr("src") || "",
+            authors: [this._trim($item.find(SELECTORS.comicList.author).clone().find(".glyphicon").remove().end().text())],
+            lastest_chapters: [{
+                id: chapterMatch ? Number(chapterMatch[1]) : 0,
+                name: this._trim(chapterLink.text()),
+                updated_at: this._getDefaultText(),
+            }],
+            is_trending: $item.find(SELECTORS.comicList.trendingIcon).length > 0,
+            // Default values for fields not present in list view
+            short_description: this._getDefaultText(),
+            genres: [],
+            other_names: [],
+            status: "Full",
+            total_views: this._getDefaultText(),
+            total_comments: this._getDefaultText(),
+            followers: this._getDefaultText(),
+            updated_at: this._getDefaultText(),
         };
-      });
-
-      return { comics, total_pages, current_page: page };
-    } catch (err) {
-      throw err;
     }
-  }
 
-  public async getChapters(paramaters: { slug: string, chapterPage?: number }): Promise<any> {
-    const { slug, chapterPage } = paramaters;
-    try {
-      const $ = await this.createRequest(`${slug}/trang-${chapterPage || 1}`);
-      const chapters = Array.from($("#list-chapter .list-chapter li a")).map((chap) => {
-        const href = $(chap).attr("href");
-        const id = href?.split("-")?.at(-1)?.replace("/", "") || '0';
-        const name = this.getDefaultText($(chap).attr("title") || $(chap).text());
-        return { id, name };
-      });
-      return chapters;
-    } catch (err) {
-      throw err;
+    // --- PUBLIC API METHODS ---
+
+    private async getComics(path: string, page: number = 1): Promise<any> {
+        const fullPath = `${path}${page > 1 ? `trang-${page}/` : ''}`;
+        const $ = await this.createRequest(fullPath);
+
+        const pagHref = this._get($(SELECTORS.comicList.pagination[0]).parent(), SELECTORS.comicList.pagination.join(', ')).attr('href');
+        const total_pages = Number(pagHref?.match(/trang-(\d+)/)?.[1] || pagHref?.match(/page[=\/](\d+)/)?.[1] || 1);
+
+        if (page > total_pages) {
+            return { status: 404, message: "Page not found" };
+        }
+
+        const comics = $(SELECTORS.comicList.item).map((_, el) => this._parseComicItem($, el)).get();
+        return { comics, total_pages, current_page: page };
     }
-  }
 
-  public async getGenres(): Promise<any> {
-    try {
-      const $ = await this.createRequest("");
-      const genres = Array.from($(".navbar-nav li.dropdown:contains('Danh sách') .dropdown-menu a")).map((item) => {
-        const href = $(item).attr("href") || "";
-        const id = this.getGenreId(href);
-        const name = this.trim($(item).text()) || "";
-        const description = $(item).attr("title") || "";
-        return { id, name, description };
-      });
-      return genres;
-    } catch (err) {
-      throw err;
+    public async getChapters(params: { slug: string, chapterPage?: number }): Promise<any> {
+        const { slug, chapterPage = 1 } = params;
+        const $ = await this.createRequest(`${slug}/trang-${chapterPage}/`);
+        return $(SELECTORS.chapterList.item).map((_, chap) => {
+            const href = $(chap).attr("href") || '';
+            return {
+                id: href.split('-').pop()?.replace('/', '') || '0',
+                name: this._getDefaultText($(chap).attr("title") || $(chap).text()),
+            };
+        }).get();
     }
-  }
 
-  public async getRecommendComics(): Promise<any> {
-    try {
-      return await this.getComics("danh-sach/truyen-hot/trang-1");
-    } catch (err) {
-      throw err;
+    public async getGenres(): Promise<any> {
+        const $ = await this.createRequest("");
+        return $(SELECTORS.genreList).map((_, item) => {
+            const href = $(item).attr("href") || "";
+            return {
+                id: this._getId(href),
+                name: this._trim($(item).text()),
+                description: $(item).attr("title") || "",
+            };
+        }).get();
     }
-  }
 
-  public async getRecentUpdateComics(page: number = 1): Promise<any> {
-    try {
-      return await this.getComics("/danh-sach/truyen-moi/", page);
-    } catch (err) {
-      throw err;
+    public async getRecommendComics(): Promise<any> {
+        return this.getComics("danh-sach/truyen-hot/trang-1");
     }
-  }
 
-  public async getCompletedComics(page: number = 1): Promise<any> {
-    try {
-      return await this.getComics("/danh-sach/truyen-full/", page);
-    } catch (err) {
-      throw err;
+    public async getRecentUpdateComics(page: number = 1): Promise<any> {
+        return this.getComics("danh-sach/truyen-moi/", page);
     }
-  }
 
-  public async getComicsByGenre(genreId: string, page: number = 1): Promise<any> {
-    try {
-      const path = genreId === "all" ? "danh-sach/truyen-moi/" : `danh-sach/${genreId}/`;
-      return await this.getComics(path, page);
-    } catch (err) {
-      throw err;
+    public async getCompletedComics(page: number = 1): Promise<any> {
+        return this.getComics("danh-sach/truyen-full/", page);
     }
-  }
 
-  public async getTrendingComics(page: number = 1): Promise<any> {
-    try {
-      return await this.getComics("danh-sach/truyen-hot/trang-2", page);
-    } catch (err) {
-      // throw err;
+    public async getComicsByGenre(genreId: string, page: number = 1): Promise<any> {
+        const path = genreId === "all" ? "danh-sach/truyen-moi/" : `the-loai/${genreId}/`;
+        return this.getComics(path, page);
     }
-  }
 
-  public async searchComics(query: string, page: number = 1): Promise<any> {
-    try {
-      return await this.getComics(`tim-kiem/?tukhoa=${query.replace(/\s+/g, "+")}&`, page);
-    } catch (err) {
-      throw err;
+    public async getTrendingComics(page: number = 1): Promise<any> {
+        return this.getComics("danh-sach/truyen-hot/", page);
     }
-  }
 
-  public async getComicDetail(paramaters: { slug: string, id?: string, chapterPage?: number }): Promise<any> {
-    const { slug } = paramaters;
-    try {
-      const [$, chapters] = await Promise.all([
-        this.createRequest(`${slug}/`),
-        this.getChapters(paramaters),
-      ]);
-
-      let total_chapter_pages = 1;
-      const sencondLastestPage = $(".col-truyen-main #list-chapter .pagination li:eq(-2) a").attr("href");
-      const lastestPage = $(".col-truyen-main #list-chapter .pagination li:eq(-1) a").attr("href");
-      const pagHref = lastestPage?.includes('javascript:void(0)') ? sencondLastestPage : lastestPage;
-      if (pagHref) {
-        const m = pagHref.match(/trang-(\d+)/) || pagHref.match(/page[=\/](\d+)/);
-        total_chapter_pages = m ? Number(m[1]) : 1;
-      }
-      const chapterPerPage = chapters?.length || 0;
-      const totalLastChaptersPage = await this.getChapters({...paramaters, chapterPage: total_chapter_pages})
-      
-      const totalLastChaptersPerPage = totalLastChaptersPage?.length || 0;
-      const totalChapterOfComic = chapterPerPage * total_chapter_pages + totalLastChaptersPerPage;
-
-      const title = this.convertText($(".col-truyen-main .col-info-desc .title"));
-      const thumbnail = $(".col-truyen-main .books img").attr("src") || "";
-      const description = this.convertText($(".col-truyen-main .desc-text"));
-      const authors = Array.from($(".col-truyen-main .info div").filter((_: any, el: any) => $(el).text().includes("Tác giả"))).map((el) => this.getDefaultText($(el).find("a").text())).filter(Boolean);
-      const status = this.getDefaultText($(".col-truyen-main .text-success")?.text()?.trim());
-      const genres = Array.from($(".col-truyen-main .info div").filter((_: any, el: any) => $(el).text().includes("Thể loại")).find("a")).map((item) => {
-        const id = this.getGenreId($(item).attr("href") ?? '');
-        const name = $(item).text();
-        return { id, name };
-      });
-      const is_adult = false; // Fix tạm
-      const other_names: any = []; // Fix tạm
-      const total_views = this.formatTotal($(".col-truyen-main .info div").filter((i: any, el: any) => $(el).text().includes("Lượt xem")).find("span").text()) || this.getDefaultText();
-      const rating_count = Number($(".col-truyen-main .rate-holder").attr("data-score")) || 0; // Fix tạm
-      const average = Number($(".col-truyen-main .small span:last-child").text()) || 0;
-      const followers = this.getDefaultText(); // No followers
-      return {
-        title,
-        thumbnail,
-        description,
-        authors,
-        status,
-        genres,
-        total_views,
-        average,
-        rating_count,
-        followers,
-        chapters,
-        id: slug,
-        is_adult,
-        other_names,
-        total_chapter_pages,
-        total_chapters_of_comic: totalChapterOfComic
-      };
-    } catch (err) {
-      throw err;
+    public async searchComics(query: string, page: number = 1): Promise<any> {
+        const path = `tim-kiem/?tukhoa=${query.replace(/\s+/g, "+")}&`;
+        return this.getComics(path, page);
     }
-  }
 
-  private getDefaultText(value?: string): string {
-    if(value) return value;
-    return 'Đang cập nhật';
-  }
+    public async getComicDetail(params: { slug: string }): Promise<any> {
+        const $ = await this.createRequest(`${params.slug}/`);
 
-  private convertText(element: Cheerio<any>): string {
-    if (!element) return '';
+        const listChapter = $(SELECTORS.comicDetail.chapterListPagination);
+        const secondLastPage = listChapter.eq(-2).find('a').attr("href");
+        const lastPage = listChapter.eq(-1).find('a').attr("href");
+        const pagHref = lastPage?.includes('javascript:void(0)') ? secondLastPage : lastPage;
+        const total_chapter_pages = Number(pagHref?.match(/trang-(\d+)/)?.[1] || 1);
 
-    let htmlContent = element.html();
-    if (!htmlContent) return '';
+        // Fetch first and last page of chapters concurrently
+        const [chapters_page_1, chapters_page_last] = await Promise.all([
+            this.getChapters({ ...params, chapterPage: 1 }),
+            total_chapter_pages > 1 ? this.getChapters({ ...params, chapterPage: total_chapter_pages }) : Promise.resolve([]),
+        ]);
 
-    htmlContent = htmlContent
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/p>/gi, '\n')
-      .replace(/<\/div>/gi, '\n')
-      .replace(/<\/li>/gi, '\n');
+        const total_chapters_of_comic = (chapters_page_1.length * (total_chapter_pages - 1)) + chapters_page_last.length;
 
-    htmlContent = htmlContent
-      .replace(/&nbsp;/gi, ' ')
-      .replace(/&quot;/gi, '"')
-      .replace(/&apos;/gi, "'")
-      .replace(/&lt;/gi, '<')
-      .replace(/&gt;/gi, '>')
-      .replace(/&amp;/gi, '&');
-
-    htmlContent = htmlContent.replace(/<[^>]+>/g, '');
-    return htmlContent.trim();
-  }
-
-
-  public async getChapterContent(paramaters: { slug: string, id: string, chapterPage?: number }): Promise<any> {
-    const { slug, id } = paramaters;
-    try {
-      const [$, chapters] = await Promise.all([
-        this.createRequest(`${slug}/chuong-${id}/`),
-        this.getChapters(paramaters),
-      ]);
-      const chapter_name = this.getDefaultText($("#chapter-big-container .chapter-title").text()?.trim());
-      const comic_name = this.getDefaultText($("#chapter-big-container .truyen-title").text()?.trim());
-      const content = this.getDefaultText(this.convertText($('#chapter-c')));
-
-      return { chapter_name, comic_name, content, chapters };
-    } catch (err) {
-      throw err;
+        return {
+            title: this._convertText($(SELECTORS.comicDetail.title)),
+            thumbnail: $(SELECTORS.comicDetail.thumbnail).attr("src") || "",
+            description: this._convertText($(SELECTORS.comicDetail.description)),
+            authors: $(SELECTORS.comicDetail.authors).map((_, el) => this._getDefaultText($(el).text())).get(),
+            status: this._getDefaultText($(SELECTORS.comicDetail.status)?.text()),
+            genres: $(SELECTORS.comicDetail.genres).map((_, item) => ({
+                id: this._getId($(item).attr("href") || ''),
+                name: $(item).text(),
+            })).get(),
+            total_views: this._formatTotal(this._trim($(SELECTORS.comicDetail.totalViews).text())),
+            average: Number($(SELECTORS.comicDetail.averageRating).text()) || 0,
+            rating_count: Number($(SELECTORS.comicDetail.ratingCount).attr("data-score")) || 0,
+            followers: this._getDefaultText(), // Not available
+            chapters: chapters_page_1, // Only return first page of chapters
+            id: params.slug,
+            is_adult: false, // Not available
+            other_names: [], // Not available
+            total_chapter_pages,
+            total_chapters_of_comic,
+        };
     }
-  }
 
-  public async getComicsByAuthor(alias: string) {
-    try {
-      return this.getComics(`tac-gia/${alias}/`);
-    } catch (err) {
-      throw err;
+    public async getChapterContent(params: { slug: string, id: string }): Promise<any> {
+        const [$, chapters_page_1] = await Promise.all([
+            this.createRequest(`${params.slug}/chuong-${params.id}/`),
+            this.getChapters({ slug: params.slug, chapterPage: 1 }), // Get first page for chapter list
+        ]);
+
+        return {
+            chapter_name: this._getDefaultText($(SELECTORS.chapterContent.chapterName).text()),
+            comic_name: this._getDefaultText($(SELECTORS.chapterContent.comicName).text()),
+            content: this._getDefaultText(this._convertText($(SELECTORS.chapterContent.content))),
+            chapters: chapters_page_1,
+        };
     }
-  }
+
+    public async getComicsByAuthor(alias: string) {
+        return this.getComics(`tac-gia/${alias}/`);
+    }
 }
 
-const Comics = new ComicsApi();
-export { Comics };
+export const Comics = new ComicsApi();
