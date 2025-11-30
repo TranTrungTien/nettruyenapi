@@ -34,7 +34,7 @@ router.get('/search', async (req, res) => {
 // Page params
 const pageParamsApiPaths = [
   { path: '/completed-story', callback: (...params: any) => SSStory.getCompletedStory(...params) },
-  { path: '/recent-update-story', callback: (...params: any) => SSStory.getRecentUpdateStory(...params) },
+  { path: '/recent-update-story', callback: (...params: any) => SSStory.getRecentUpdateStory() },
   { path: '/trending-story', callback: (...params: any) => SSStory.getTrendingStory(...params) },
 ];
 
