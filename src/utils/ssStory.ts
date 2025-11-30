@@ -406,7 +406,7 @@ class SSStoryApi {
 
     public async searchStory(query: string, page: number = 1): Promise<any> {
         try {
-            return await this.getStories(`tim-kiem?s=${query.replace(/\s+/g, "+")}&page=${page}`, 0, true);
+            return await this.getStories(`tim-kiem?s=${query.replace(/\s+/g, "+")}&page=${page}`, page, true);
         } catch (err) {
             throw err;
         }
