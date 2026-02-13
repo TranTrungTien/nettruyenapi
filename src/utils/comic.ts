@@ -92,7 +92,7 @@ class StoryApi {
 
         return inst;
     }
-    
+
     private async createRequest(path: string): Promise<CheerioAPI> {
         const url = `${this.domain}/${path}`.replace(/\?+/g, "?");
         console.log("Fetching:", url);
@@ -115,7 +115,7 @@ class StoryApi {
                 if (result.length) return result.first();
             }
             return element.find('selector-that-does-not-exist');
-        } 
+        }
         return element.find(selector).first();
     }
 
@@ -123,8 +123,16 @@ class StoryApi {
     private _formatTotal = (total?: string): number => total ? Number(total.replace(/[.,]/g, "")) : 0;
     private _trim = (text?: string): string => text?.replace(/\n/g, " ").replace(/\s+/g, " ").trim() || "";
     private _getDefaultText = (value?: string): string => this._trim(value) || 'Đang cập nhật';
-    private _convertText = (element: Cheerio<any>): string => this._trim(element.text());
-
+    private _convertText(element: Cheerio<any>): string {
+        if (!element || !element.html()) return '';
+        const html = element.html()!
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<\/(p|div|li)>/gi, '\n')
+            .replace(/&nbsp;/gi, ' ').replace(/&quot;/gi, '"').replace(/&apos;/gi, "'").replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&amp;/gi, '&')
+            .replace(/<[^>]+>/g, '')
+            .replace(/\n{2,}/g, '\n\n');
+        return html.trim();
+    }
     // --- PARSERS ---
 
     private _parseStoryItem($: CheerioAPI, item: any) {
@@ -179,9 +187,9 @@ class StoryApi {
         }
 
         const comics = $(SELECTORS.comicList.item).map((_, el) => this._parseStoryItem($, el)).get();
-        
-        return { 
-            comics, 
+
+        return {
+            comics,
             currentPage: page,
             totalPages: totalPages,
             hasMorePages: page < totalPages
@@ -195,7 +203,7 @@ class StoryApi {
             const href = $(chap).attr("href") || '';
             const title = this._getDefaultText($(chap).attr("title") || $(chap).text());
             const chapterMatch = href.match(/chuong-(\d+)/i) || title.match(/Chương\s*(\d+)/i);
-            
+
             return {
                 id: href.split('-').pop()?.replace('/', '') || '0',
                 name: title,
@@ -224,7 +232,7 @@ class StoryApi {
     }
 
     public async getRecentUpdateStory(): Promise<any> {
-        return this.getStories("danh-sach/truyen-moi/", 1);
+        return this.getRecentUpdateStoryInfo();
     }
 
     public async getCompletedStory(page: number = 1): Promise<any> {
@@ -302,6 +310,49 @@ class StoryApi {
             chapterNumber: chapterMatch ? Number(chapterMatch[1]) : 0,
             chapters: [], // V3 trả về empty array
         };
+    }
+
+    public async getRecentUpdateStoryInfo(): Promise<any> {
+        try {
+            const $ = await this.createRequest("") as CheerioAPI;
+            const comics = $('#list-index .list-truyen .row').map((_, element) => {
+                const $item = $(element);
+                const titleLink = $item.find('h3[itemprop="name"] a');
+                const href = titleLink.attr('href')?.replace(/^\//, '') || '';
+                
+                const chapterLink = $item.find(".col-chap.text-info a");
+
+                return {
+                    id: href.split('/').filter(Boolean)[2] || href,
+                    title: titleLink.text().trim().replace(/^\s*›\s*/, '').trim(),
+                    href: href,
+                    genres: $item.find(".col-cat a[itemprop='genre']").map((_, el) => ({
+                        id: $(el).attr('href')?.replace('/the-loai/', '') || '',
+                        name: $(el).text().trim(),
+                    })).get(),
+                    status: 'Đang cập nhật',
+                    totalChapters: 0,
+                    latestChapter: {
+                        name: chapterLink.text().trim(),
+                        href: chapterLink.attr('href') || '',
+                        id: chapterLink.attr('href')?.split('/').filter(Boolean)[3] || '',
+                    },
+                    updatedAt: $item.find(".col-time").text().trim(),
+                    // --- Default fields to match response structure ---
+                    thumbnail: '', fullThumbnail: '', authors: [], otherNames: [], shortDescription: '',
+                    totalViews: 0, followers: 0, totalComments: 0, isTrending: false, isHot: false,
+                    isCompleted: false,
+                };
+            }).get();
+            return {
+                comics,
+                currentPage: 1,
+                totalPages: 1,
+                hasMorePages: false,
+            };
+        } catch (error) {
+            return { comics: [], currentPage: 1, totalPages: 1, hasMorePages: false };
+        }
     }
 
     public async getStoryByAuthor(alias: string) {
