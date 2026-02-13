@@ -335,7 +335,7 @@ class StoryApi {
                     latestChapter: {
                         name: chapterLink.text().trim(),
                         href: chapterLink.attr('href') || '',
-                        id: chapterLink.attr('href')?.split('/').filter(Boolean)[3] || '',
+                        id: chapterLink.attr('href')?.split('/')?.[4]?.split("-")?.[1] || '',
                     },
                     updatedAt: $item.find(".col-time").text().trim(),
                     // --- Default fields to match response structure ---
