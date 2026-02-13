@@ -5,6 +5,7 @@ import { Cheerio, CheerioAPI, load } from "cheerio";
 import { CookieJar } from "tough-cookie";
 import { wrapper as axiosCookieJarSupport } from "axios-cookiejar-support";
 import randomUserAgent from "random-useragent";
+import { randomDelay } from ".";
 
 // --- CONSTANTS AND SELECTORS ---
 
@@ -122,15 +123,10 @@ class SSStoryApi {
     }
 
     // --- CORE HELPERS ---
-    private async randomDelay(min = 20, max = 100): Promise<void> {
-        const ms = Math.floor(Math.random() * (max - min + 1)) + min;
-        await new Promise((res) => setTimeout(res, ms));
-    }
-
     private async createRequest(path?: string, shouldReturnRawData = false): Promise<any> {
         const url = `${this.domain}/${path}`.replace(/\?+/g, "?");
         console.log("Fetching:", url);
-        await this.randomDelay();
+        await randomDelay();
         try {
             const resp = await this.axiosInstance.get(url, {
                 withCredentials: true,

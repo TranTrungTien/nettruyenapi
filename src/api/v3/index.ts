@@ -2,7 +2,7 @@
 import express, { NextFunction, Request, Response } from 'express';
 import axios from 'axios';
 import userAgent from 'random-useragent';
-import { SSStory } from '../../utils/ssStory';
+import { SSStory } from '../../utils';
 
 const router = express.Router();
 
